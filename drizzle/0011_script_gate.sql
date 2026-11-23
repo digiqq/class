@@ -1,0 +1,1 @@
+ALTER TABLE zhangfa_rooms ADD COLUMN script_open INTEGER NOT NULL DEFAULT 0;

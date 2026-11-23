@@ -1,0 +1,21 @@
+[Unit]
+Description=Zhangfa Classroom
+After=network.target
+
+[Service]
+Type=simple
+User=zhangfa-classroom
+Group=zhangfa-classroom
+WorkingDirectory=/opt/zhangfa-classroom/current
+EnvironmentFile=/etc/zhangfa-classroom.env
+ExecStart=/usr/bin/node /opt/zhangfa-classroom/current/classroom-server.mjs
+StateDirectory=zhangfa-classroom
+StateDirectoryMode=0750
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

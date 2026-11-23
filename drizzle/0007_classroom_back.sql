@@ -1,0 +1,1 @@
+ALTER TABLE zhangfa_rooms ADD COLUMN nav_revision INTEGER NOT NULL DEFAULT 0;

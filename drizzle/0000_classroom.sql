@@ -1,0 +1,6 @@
+CREATE TABLE zhangfa_rooms (
+ code TEXT PRIMARY KEY,
+ teacher_key TEXT NOT NULL,
+ phase INTEGER NOT NULL DEFAULT 0 CHECK(phase BETWEEN 0 AND 7),
+ created_at INTEGER NOT NULL
+);

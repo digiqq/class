@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+*.sqlite*
+*.db
+*.db-*
+*.pem
+*.key
+*.log
+.DS_Store

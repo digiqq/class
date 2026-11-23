@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN" class="course-pen">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>用笔之美 · 点一笔，找线索</title><meta name="description" content="五年级书法欣赏互动。点亮一笔，把看到的线索和教材表述配起来。"><link rel="stylesheet" href="./style.css?v=classroom-revision-20261123"><script defer src="./data.js?v=classroom-revision-20261123"></script><script defer src="./hitmap.js?v=classroom-revision-20261123"></script><script defer src="./app.js?v=classroom-revision-20261123"></script></head>
+<body><main id="main">
+ <header><p class="eyebrow">五年级美术 · 活动三 · 细欣赏</p><h1>用笔之美</h1><p class="subtitle">点一笔，找线索</p></header>
+ <section id="entry" class="card"><h2 id="entryTitle">进入课堂</h2>
+ <div class="entries" id="teacherEntry"><button id="create">教师端 · 开课</button><button id="resumeTeacher" hidden>返回教师端</button></div>
+ <form id="join" novalidate><label for="code">课堂码</label><input id="code" inputmode="numeric" autocomplete="off" placeholder="输入或粘贴课堂码" aria-describedby="joinHint"><button id="joinButton" class="primary">学生端 · 加入</button></form>
+ <p id="joinHint" class="tip">可输入 6 位课堂码，也可直接粘贴教师发来的加入链接。</p>
+ </section>
+ <p id="globalStatus" role="status"></p><p id="syncStatus" class="status" role="status"></p>
+ <section id="room" hidden><div class="room-bar"><strong id="badge"></strong><button id="copyCode" hidden>复制课堂码</button><button id="copy" hidden>复制学生加入链接</button><button id="exit">退出课堂</button></div><div id="copyManual" hidden><label for="copyValue">长按或选中复制</label> <input id="copyValue" readonly></div><div id="stage"></div></section>
+</main></body></html>

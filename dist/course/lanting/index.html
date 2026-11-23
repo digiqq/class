@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>《兰亭序》差异观察实验室</title>
+  <link rel="stylesheet" href="styles.css?v=lesson-recap-shapes-20261123" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">书法艺术的魅力 · 活动二</p>
+        <h1>《兰亭序》差异观察实验室</h1>
+      </div>
+      </header>
+
+
+
+    <section id="liveWaiting" class="live-wait" hidden><h2>请看大屏幕</h2><p id="liveWaitingText"></p></section>
+    <section class="panel active" data-panel="1">
+      <div class="prompt-card">
+        <span class="prompt-no">观察任务 01</span>
+        <h2>哪一幅让你一眼就觉得最特别？</h2>
+        <p>先凭直觉选择，不需要马上说出专业答案。</p>
+      </div>
+      <div class="works-grid" id="worksGrid"></div>
+      <div class="teacher-tip">你看到了什么？它特别在哪里？</div>
+
+    </section>
+
+    <section class="panel" data-panel="2"></section>
+    <section class="panel" data-panel="3"></section>
+    <footer class="bottom-nav live-actions" id="liveActions" hidden><button type="button" class="ghost-btn" id="liveBack" hidden>← 上一页</button><p role="status" id="liveActionStatus"></p><button type="button" class="primary-btn" id="liveAdvance"></button></footer>
+
+  </main>
+  <canvas id="processor" hidden></canvas>
+  <script src="app.js?v=lesson-recap-shapes-20261123"></script>
+  <script src="live.js?v=lesson-recap-shapes-20261123"></script>
+</body>
+</html>
