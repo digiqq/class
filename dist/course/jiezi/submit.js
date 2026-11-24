@@ -9,3 +9,26 @@ async function submitClass(){
  catch(e){out.textContent=e.message}
  finally{button.disabled=false}
 }
+
+let structureOpen=window.parent.classroom?.activityOpen??true;
+async function structureAction(action){
+ const button=document.getElementById(action==='toggle'?'structureGate':'structureStats');
+ if(button.disabled)return;
+ button.disabled=true;
+ try{
+  const result=await window.parent.structureClassroom(action);
+  if(action==='toggle')structureOpen=result.open;
+  else{
+   const {total,perfect,wrong}=result;
+   const percent=n=>Math.round(100*n/total)+'%';
+   statsHtml=total?`<section class="good"><h3>课堂正确率</h3><p>已提交 ${total} 人 · 五题全对 ${perfect} 人（${percent(perfect)}）</p><ul>${data.map((d,i)=>`<li>${d.name}：${total-wrong[i]} / ${total} 人答对（${percent(total-wrong[i])}）</li>`).join('')}</ul></section>`:'<p>还没有同学提交。</p>';
+  }
+  render();
+ }catch(e){document.getElementById('submitStatus').textContent=e.message}
+ finally{button.disabled=false}
+}
+window.setStructureOpen=open=>{
+ if(structureOpen===open)return;
+ structureOpen=open;
+ if(step===1)render();
+};

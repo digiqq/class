@@ -1,10 +1,68 @@
 const data=[{name:'篆书',box:[65,637,540,620],shape:'tall',answer:'C',plain:'修长',question:'这个字更修长，还是更扁宽？',detail:'看看整个字的外形：上下舒展，左右围绕中间相互呼应。',term:'纵向取势，对称修长',tip:'“纵向取势”就是字形整体向上下伸展。对称是观察左右的呼应，并非要求两边完全相同。'},{name:'隶书',box:[778,617,555,566],shape:'wide',answer:'A',plain:'扁宽',question:'这个字主要向上下伸展，还是向左右展开？',detail:'把整个字连起来看，字形较扁，笔画向左右展开。',term:'横向取势，字形较扁',tip:'现在看的是整字的宽窄与布局，不只是一笔的长短。'},{name:'楷书',box:[1455,620,504,552],shape:'square',answer:'B',plain:'方整',question:'各部分放在一起，给你怎样的整体感觉？',detail:'看看左右部件的位置和彼此配合：安排有序，整体方整、稳当。',term:'结构严谨，形体方整',tip:'方整是一种整体感受，不是每个字都必须填满一个正方形。'},{name:'行书',box:[2080,635,558,571],shape:'slope',answer:'E',plain:'高低呼应',question:'看这个例字，左右部件的高低有什么变化？',detail:'留意左边与右边的高低安排，体会字形在变化中彼此呼应。',term:'左低右高，刚柔并济',tip:'“左低右高”针对教材这个例字的观察，不是所有行书都必须遵循的规则。'},{name:'草书',box:[2790,665,400,566],shape:'free',answer:'D',plain:'变化丰富',question:'这个例字连起来看，外形有什么收放变化？',detail:'看看字形的收拢与放开、上下的穿插变化，感受自由生动的整体形态。',term:'变化莫测，奥妙绝伦',tip:'可以先用自己的话说“变化多”“有收有放”，不必急着解释所有专业词。'}];
-const options={A:'横向取势，字形较扁',B:'结构严谨，形体方整',C:'纵向取势，对称修长',D:'变化莫测，奥妙绝伦',E:'左低右高，刚柔并济'};let exploration=[{frame:null,judging:false},{frame:null,judging:false}];let openChoice=-1;let step=0,focus=0,guides=false,matched={},answers={},checked=false;const $=s=>document.querySelector(s);
+const options={A:'横向取势，字形较扁',B:'结构严谨，形体方整',C:'纵向取势，对称修长',D:'变化莫测，奥妙绝伦',E:'左低右高，刚柔并济'};const shapeFrames={修长:'tall',扁宽:'wide'};let activeGlyph=null, revealed=false, statsHtml="";let step=0,focus=0,guides=false,matched={},answers={},checked=false;const $=s=>document.querySelector(s);
 function picture(d,frame=null){const files=['zhuan','li','kai','xing','cao'];return `<div class="picture ${d.shape} ${frame?'frame-'+frame:''}"><img src="assets/${files[data.indexOf(d)]}.jpg" alt="教材${d.name}例字"/>${frame?'<div class="trial-frame" aria-hidden="true"></div>':''}</div>`}
 const jieziKey='jiezi-draft:'+parent.classroom?.role+':'+parent.classroom?.code+':'+parent.classroom?.student;
- try{const d=JSON.parse(localStorage.getItem(jieziKey)||'null');if(d){({step,focus,guides,matched,answers,checked,exploration}=d)}}catch{}
- function render(){try{localStorage.setItem(jieziKey,JSON.stringify({step,focus,guides,matched,answers,checked,exploration}))}catch{}$('#intro').hidden=step!==0;document.querySelectorAll('nav button').forEach(b=>{b.classList.toggle('active',+b.dataset.step===step);b.setAttribute('aria-current',+b.dataset.step===step?'step':'false')});$('#prev').disabled=step===0;$('#next').textContent=step===1?'重新体验 ↺':'下一步 →';$('#progress').textContent=`第 ${step+1} 步，共 2 步`;let s='';if(step===0){s='<h2>给这两个字，找一找外形</h2><p class="sub">点一点例字，用两种外形框分别套一套，再说说：这个字是修长，还是扁宽？</p><div class="grid">'+data.slice(0,2).map((d,i)=>`<article class="card"><h3>${d.name}</h3><button class="image-toggle" data-aux="${i}" aria-label="为${d.name}显示辅助框">${picture(d,exploration[i].frame)}</button><button class="aux-toggle" data-aux="${i}">${exploration[i].frame?'收起辅助框':'用外形框，框一框'}</button>${exploration[i].frame?`<div class="choices frame-choices" aria-label="切换辅助框"><button data-frame="${i}" data-value="tall" aria-pressed="${exploration[i].frame==='tall'}">▯ 试试修长框</button><button data-frame="${i}" data-value="wide" aria-pressed="${exploration[i].frame==='wide'}">▭ 试试扁宽框</button></div><p class="mini">换一种框试试，哪一种更贴合字的外形？</p>`:''}<button data-judge="${i}" class="judge-toggle">我来判断</button>${exploration[i].judging?`<p>这个字的外形是……</p><div class="choices">${['修长','扁宽'].map(t=>`<button data-match="${i}" data-value="${t}" aria-pressed="${matched[i]===t}">${t}</button>`).join('')}</div>`:''}<div class="result" role="status">${matched[i]?matched[i]===d.plain?`你看出来了：${d.plain}。`:'再用两种框试一试，看看整个字的高与宽。':''}</div></article>`).join('')+'</div><div class="good first-summary"><strong>从整个字形，发现结字之美</strong><p>修长还是扁宽，可以从一笔一画共同构成的字形中看出来。再看看笔画间的穿插与排布，你还能发现什么？</p></div>';}
-if(step===1){s='<h2>看五个例字，选出对应的结字描述</h2><p class="sub">从整个字形，到笔画与部件的安排：它们各有什么特点？选出合适的描述。</p><div class="all-five">'+data.map((d,i)=>`<article class="card"><h3>${d.name}</h3>${picture(d)}<details class="inline-descriptions" ${openChoice===i?'open':''}><summary>${answers[i]?'已选 '+answers[i]+' · '+options[answers[i]]:'选择描述'}</summary><div>${Object.entries(options).map(([k,v])=>`<button type="button" data-answer="${i}" data-value="${k}" aria-pressed="${answers[i]===k}">${k} · ${v}</button>`).join('')}</div></details>${checked?`<div class="result">${answers[i]===d.answer?'✓ 观察相符':answers[i]?'再看一看':'还没有选择'}</div>`:''}</article>`).join('')+'</div><div class="bank">'+Object.entries(options).map(([k,v])=>`<p><b>${k}</b>　${v}</p>`).join('')+'</div><div class="submit-row"><button id="check">看看我的判断</button><button id="submitClass">提交到课堂</button></div><p id="submitStatus" role="status"></p><div id="checkMsg" class="result" role="status">'+(checked?Object.keys(answers).length<5?'还有例字没有选择，继续看看。':data.every((d,i)=>answers[i]===d.answer)?'五个都找到了！请任选一个，说说你的观察依据。':'还有描述可以再想一想。再看看字形和部件的位置，想一想它们如何安排。':'')+'</div>';}
-if(step===1)s+='<div class="summary lesson-end"><small>我们的发现</small><h2>从一笔一画，看到一个完整的字</h2><p>笔画怎样安排、彼此怎样穿插呼应，会让整个字呈现出不同的美，这就是<strong>结字之美</strong>。</p><p>接下来，把一个个字放到整篇作品中，还会发现怎样的章法之美呢？</p></div>';$('#stage').innerHTML=s;bind();if($('#submitClass'))$('#submitClass').onclick=submitClass;}
-function bind(){document.querySelectorAll('[data-aux]').forEach(b=>b.onclick=()=>{const e=exploration[+b.dataset.aux];e.frame=e.frame?null:'tall';render()});document.querySelectorAll('[data-frame]').forEach(b=>b.onclick=()=>{exploration[+b.dataset.frame].frame=b.dataset.value;render()});document.querySelectorAll('[data-judge]').forEach(b=>b.onclick=()=>{exploration[+b.dataset.judge].judging=true;render()});document.querySelectorAll('[data-match]').forEach(b=>b.onclick=()=>{matched[b.dataset.match]=b.dataset.value;render()});document.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>{focus=+b.dataset.focus;guides=false;render()});if($('#guide'))$('#guide').onclick=()=>{guides=!guides;render()};document.querySelectorAll('[data-answer]').forEach(el=>el.onclick=()=>{answers[el.dataset.answer]=el.dataset.value;openChoice=-1;checked=false;render()});if($('#check'))$('#check').onclick=()=>{checked=true;render()};if($('#myChoice'))$('#myChoice').onchange=()=>{const d=data[+$('#myChoice').value];$('#exampleSentence').textContent=`我给${d.name}选 ${d.answer}，因为我看到它${d.detail.replace('看看','').replace('把整个字连起来看，','')}`};}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{step=+b.dataset.step;render()});$('#prev').onclick=()=>{step=Math.max(0,step-1);render();window.scrollTo(0,0)};$('#next').onclick=()=>{step=step===1?0:step+1;render();window.scrollTo(0,0)};render();
+ try{const d=JSON.parse(localStorage.getItem(jieziKey)||'null');if(d){({step,focus,guides,matched,answers,checked}=d)}}catch{}
+ function render(){try{localStorage.setItem(jieziKey,JSON.stringify({step,focus,guides,matched,answers,checked}))}catch{}const describing=step===1;
+ $('#intro').hidden=describing;
+ $('#jieziKicker').hidden=!describing;
+ $('#jieziSubtitle').hidden=!describing;
+ $('#shapeFooter').hidden=describing;
+ document.querySelectorAll('nav button').forEach(b=>{
+  const active=+b.dataset.step===step;
+  b.classList.toggle('active',active);
+  b.setAttribute('aria-current',active?'step':'false');
+ });
+ let s='';
+ if(!describing){
+  s=`<p class="sub shape-task">试一试用辅助框来框选一下这两个字，看看它们的外形有什么特点。</p>
+  <div class="grid shape-grid">${data.slice(0,2).map((d,i)=>`<article class="card">
+   <h3>${d.name}</h3>${picture(d,shapeFrames[matched[i]])}
+   <div class="shape-judgment" role="group" aria-label="${d.name}字形判断">
+    <span>我判断：这个字的外形是</span>
+    ${Object.keys(shapeFrames).map(t=>`<button type="button" data-match="${i}" data-value="${t}" aria-pressed="${matched[i]===t}">${t}</button>`).join('')}
+    <span>的。</span>
+   </div></article>`).join('')}</div>
+  <div class="good first-summary"><p>修长还是扁宽？我们从一笔一画构成的字形中感受到了不同的美。再看看更多的笔画穿插，你还能发现哪些结字之美呢？</p></div>`;
+ }
+
+if(describing){
+  const locked=!projection&&!structureOpen;
+  s=`<h2>看五个例字，选出对应的结字描述</h2>
+   <p class="sub">从整个字形，到笔画与部件的安排：它们各有什么特点？选出合适的描述。</p>
+   <div class="all-five" aria-label="例字">${data.map((d,i)=>`<button type="button" class="card description-glyph" data-glyph="${i}" aria-pressed="${activeGlyph===i}" ${locked?'disabled':''}><strong>${d.name}</strong>${picture(d)}<span class="chosen-code">已选 <b>${answers[i]||''}</b></span></button>`).join('')}</div>
+   <div class="bank description-bank" aria-label="五个描述">${Object.entries(options).map(([k,v])=>`<button type="button" data-answer="${k}" aria-pressed="${activeGlyph!==null&&answers[activeGlyph]===k}" ${locked||activeGlyph===null?'disabled':''}><b>${k}</b>　${v}</button>`).join('')}</div>
+   <div class="submit-row">${projection?`<button type="button" id="structureGate">${structureOpen?'暂停学生答题':'继续学生答题'}</button><button type="button" id="structureReveal">公布正确答案</button><button type="button" id="structureStats">查看正确率</button>`:`<button type="button" id="submitClass" ${locked||!data.every((_,i)=>answers[i])?'disabled':''}>提交到课堂</button>`}</div>
+   <p id="submitStatus" role="status">${locked?'老师已暂停答题，之前的选择会保留。':''}</p>
+   ${projection&&revealed?`<div class="bank" aria-label="正确答案">${data.map(d=>`<p><b>${d.name} · ${d.answer}</b>　${options[d.answer]}</p>`).join('')}</div>`:''}
+   ${projection?statsHtml:''}
+   <div class="summary lesson-end"><small>我们的发现</small><p>从一笔一画看到一个完整的字，笔画怎么安排，彼此怎么呼应，会让整个字呈现出不同的美，这就是<strong>结字之美</strong>。</p></div>
+   ${projection&&parent!==window?`<div class="composition-next"><button type="button" id="toComposition">下一步：章法之美 →</button><p id="compositionStatus" role="status"></p></div>`:parent===window?'<div class="composition-next"><a href="/zhangfa">下一步：章法之美 →</a></div>':''}`;
+ }
+ $('#stage').innerHTML=s;
+ bind();
+}
+function bind(){
+ const bindChoice=(selector,update)=>document.querySelectorAll(selector).forEach(b=>b.onclick=()=>{
+  update(b.dataset);render();
+  document.querySelector(selector+Object.entries(b.dataset).map(([k,v])=>'[data-'+k+'="'+v+'"]').join(''))?.focus({preventScroll:true});
+ });
+ bindChoice('[data-match]',({match,value})=>{matched[match]=value});
+ bindChoice('[data-glyph]',({glyph})=>{activeGlyph=Number(glyph)});
+ bindChoice('[data-answer]',({answer})=>{if(activeGlyph!==null)answers[activeGlyph]=answer});
+ if($('#submitClass'))$('#submitClass').onclick=submitClass;
+ if($('#structureGate'))$('#structureGate').onclick=()=>structureAction('toggle');
+ if($('#structureReveal'))$('#structureReveal').onclick=()=>{revealed=true;render()};
+ if($('#structureStats'))$('#structureStats').onclick=()=>structureAction('stats');
+ if($('#toComposition'))$('#toComposition').onclick=async e=>{
+  const button=e.currentTarget;
+  button.disabled=true;
+  try{await parent.advanceToComposition()}
+  catch(err){$('#compositionStatus').textContent=err.message}
+  finally{button.disabled=false}
+ };
+}
+function showStep(next){step=next;render();window.scrollTo(0,0)}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showStep(+b.dataset.step));
+$('#next').onclick=()=>showStep(1);
+render();

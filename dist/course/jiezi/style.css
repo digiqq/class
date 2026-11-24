@@ -20,3 +20,27 @@ nav{grid-template-columns:repeat(2,minmax(0,1fr))}.lesson-end{margin-top:26px}.l
  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .all-five .card{padding-inline:4px;overflow-wrap:anywhere}
 }
+
+/* Keep choices in the card's flow, below the example image. */
+.all-five .inline-descriptions,.all-five .inline-descriptions>div{position:static;z-index:auto;transform:none}
+.all-five .inline-descriptions button{position:static}
+
+[hidden]{display:none!important}
+#shapeFooter{justify-content:flex-start}
+#shapeFooter button{background:#a45d4e;border-color:#a45d4e;color:#fff}
+.shape-grid .picture{width:min(100%,350px);height:clamp(220px,32vw,360px);margin-inline:auto}
+.shape-judgment{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:12px}
+.shape-judgment button{padding:.5rem .7rem}
+.shape-grid .trial-frame{border-color:#ffc044}
+
+.description-glyph{width:100%;min-width:0;display:grid;gap:8px;justify-items:center;text-align:center;white-space:normal}
+.description-glyph[aria-pressed=true],.description-bank button[aria-pressed=true]{background:#a45d4e;color:white;border-color:#a45d4e}
+.chosen-code{display:flex;gap:.35em;align-items:center;justify-content:center;flex-wrap:wrap}
+.chosen-code b{display:inline-grid;place-items:center;min-width:1.55em;min-height:1.55em;background:#fff8ef;color:#54241b;border-radius:.3em}
+.description-bank button{text-align:left;white-space:normal;width:100%}
+.description-bank button:disabled{opacity:1;cursor:default}
+@media(max-width:520px){.description-glyph{padding-inline:3px}.chosen-code{font-size:.75rem}}
+
+.composition-next{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:18px}
+.composition-next button,.composition-next a{background:#a45d4e;color:#fff;border:1px solid #a45d4e;border-radius:10px;padding:10px 16px;font-weight:700;text-decoration:none}
+.composition-next p{margin:0;color:#8c3830}

@@ -26,3 +26,11 @@
  .glyph-card{padding:4px;overflow-wrap:anywhere}
  .chart li{grid-template-columns:auto minmax(0,1fr) auto;gap:6px}
 }
+
+.course-pen header{display:block;text-align:left;padding:1rem 1.2rem}
+.pen-answer-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.pen-answer-gallery figure{margin:0;text-align:center}
+.pen-answer-gallery img{display:block;width:100%;height:clamp(105px,15vw,175px);object-fit:contain}
+.pen-answer-gallery figcaption p{font-size:.88rem;margin:.3rem 0}
+#penErrorReview .canvas{margin:0 auto 12px}
+#penErrorReview .option-list{position:static;display:grid}

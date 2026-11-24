@@ -2,7 +2,8 @@ import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { DatabaseSync } from 'node:sqlite';
-import { readdirSync, readFileSync } from 'node:fs';
+import { createReadStream, readdirSync, readFileSync, statSync } from 'node:fs';
+import { extname } from 'node:path';
 import worker from './dist/server/index.js';
 
 const origin = new URL(process.env.CLASSROOM_ORIGIN).origin;
@@ -42,6 +43,37 @@ const databaseBinding = {
   },
 };
 
+const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.webp':'image/webp', '.mp4':'video/mp4' };
+async function staticResponse(req, res, pathname) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return res.writeHead(405).end();
+  const path = pathname === '/' || pathname === '/zhangfa' ? '/index.html' : pathname;
+  if (!/^\/(?:(?:assets|course)\/)?(?:[a-z0-9_-]+\/)*[a-z0-9_.-]+$/i.test(path) ||
+      (path.slice(1).includes('/') && !/^\/(assets|course)\//.test(path))) return res.writeHead(404).end();
+  const type = mime[extname(path).toLowerCase()];
+  if (!type) return res.writeHead(404).end();
+  const file = new URL('./dist' + path, import.meta.url);
+  let stat;
+  try { stat = statSync(file); } catch (e) { if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return res.writeHead(404).end(); throw e; }
+  if (!stat.isFile()) return res.writeHead(404).end();
+  const size = stat.size;
+  const headers = {'Content-Type':type,'Content-Length':size,'Cache-Control':'private, max-age=300','X-Content-Type-Options':'nosniff'};
+  let start=0, end=size-1, status=200;
+  if (type === 'video/mp4') {
+    headers['Accept-Ranges']='bytes';
+    const [,a,b] = req.headers.range?.match(/^bytes=(\d*)-(\d*)$/) || [];
+    if (a || b) {
+      start = a ? Number(a) : Math.max(0,size-Number(b));
+      end = a && b ? Math.min(end,Number(b)) : end;
+      if (start>end) return res.writeHead(416,{'Content-Range':'bytes */'+size}).end();
+      status=206; headers['Content-Range']=`bytes ${start}-${end}/${size}`;
+      headers['Content-Length']=end-start+1;
+    }
+  }
+  res.writeHead(status,headers);
+  if (req.method === 'HEAD' || size===0) return res.end();
+  await pipeline(createReadStream(file,{start,end}),res);
+}
+
 createServer(async (incoming, outgoing) => {
   try {
     const url = new URL(incoming.url, origin);
@@ -49,6 +81,7 @@ createServer(async (incoming, outgoing) => {
       outgoing.writeHead(400).end();
       return;
     }
+    if (!url.pathname.startsWith('/api/')) return await staticResponse(incoming,outgoing,url.pathname);
     const method = incoming.method;
     const options = { method, headers: incoming.headers };
     if (method !== 'GET' && method !== 'HEAD') {

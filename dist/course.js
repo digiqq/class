@@ -13,12 +13,12 @@ function renderCourseShell(){
  bar.classList.toggle('cover-invite',isOpeningCover);
  bar.classList.toggle('classroom-flow',!!room?.courseStep&&!isOpeningCover);
  bar.hidden=false;
- route.hidden=!integrated||firstActivity;
+ route.hidden=!integrated||step<=3;
  if(!integrated){document.title='章法之美';module.replaceChildren();shownCourse='';module.hidden=true;return false}
  document.title='书法艺术的魅力 · 互动课堂';
  const index=Math.max(0,room?.phase===7?4:step-1);
  if(!route.hidden)route.innerHTML='<ol aria-label="课堂进度">'+courseLabels.map((label,i)=>'<li '+(i===index?'aria-current="step"':i<index?'data-done="true"':'')+'><span>'+(i+1)+'</span>'+label+'</li>').join('')+'</ol>';
- if(room?.role==='teacher'&&step>=2){
+ if(room?.role==='teacher'&&step>=4){
   route.insertAdjacentHTML('beforeend','<button type="button" id="backToLanting">回看《兰亭序》三幅对比</button>');
   $('#backToLanting').onclick=()=>returnToLanting();
  }
@@ -39,7 +39,7 @@ function renderCourseShell(){
   }
   if(identity!==shownCourse){
    shownCourse=identity;
-   module.innerHTML=`<iframe class="course-frame" title="${courseLabels[0]}" src="/course/lanting/index.html?v=lesson-recap-shapes-20261123&amp;role=${room?.role||'preview'}&amp;round=${round}"></iframe>`;
+   module.innerHTML=`<iframe class="course-frame" title="${courseLabels[0]}" src="/course/lanting/index.html?v=classroom-refine-20261124&amp;role=${room?.role||'preview'}&amp;round=${round}"></iframe>`;
    bindCourseFrame(module,iframe=>iframe.contentWindow.setLantingStage?.(room?.lantingRound||1));
   }else if(room){
    module.querySelector('iframe')?.contentWindow?.setLantingStage?.(round);
@@ -47,33 +47,37 @@ function renderCourseShell(){
   }
   return true;
  }
- $('#livePhase').hidden=false;
+ $('#livePhase').hidden=true;
  $('#livePhase').textContent=courseLabels[index];
  const identity=room.code+':'+room.role+':'+step;
- if(shownCourse===identity)return true;
+ if(shownCourse===identity){if(step===3)module.querySelector('iframe')?.contentWindow?.setStructureOpen?.(room.activityOpen);return true}
  shownCourse=identity;
  const teacher=room.role==='teacher';
- const frame=`<iframe class="course-frame" title="${courseLabels[index]}" src="/course/${courseFiles[index]}/index.html?v=${step===2?'pen-match2':'project1'}&amp;role=${room.role}&amp;class=${room.code}"></iframe>`;
- const advance=teacher?`<button type="button" id="advanceCourse" class="primary">进入${courseLabels[step]}</button>`:'';
- module.innerHTML=`<div class="course-lead"><p>${teacher?'在大屏上示范；学生在自己的设备上操作。':'请跟随老师，在当前活动中观察和尝试。'}</p></div>`+frame;
+ const frame=`<iframe class="course-frame" title="${courseLabels[index]}" src="/course/${courseFiles[index]}/index.html?v=${step===3?'jiezi-next-20261124':'classroom-refine-20261124'}&amp;role=${room.role}&amp;class=${room.code}"></iframe>`;
+ const advance=teacher&&step!==3?`<button type="button" id="advanceCourse" class="primary">进入${courseLabels[step]}</button>`:'';
+ module.innerHTML=frame;
  if(teacher)module.insertAdjacentHTML('beforeend',`<div class="course-lead course-page-actions">${previousButton}${advance}</div>`);
  bindPreviousPage(module.querySelector('[data-room-back]'));
  bindCourseFrame(module);
- if(teacher&&step===3){
-  module.insertAdjacentHTML('beforeend','<section class="course-stats"><h2>结字练习 · 课堂汇总</h2><div class="expression-actions"><button type="button" id="refreshStructure">查看统计</button><button type="button" id="drawStructure">随机展示一位同学的判断</button></div><div id="structureStats" aria-live="polite"></div><div id="structureProjection" aria-live="polite"></div></section>');
-  $('#refreshStructure').onclick=getStructureStats;
-  bindStructureDraw();
- }
- if(teacher)$('#advanceCourse').onclick=async e=>{
-  if(busy)return;
-  const button=e.currentTarget,current=room;busy=true;button.disabled=true;
-  try{const result=await roomRequest('/api/room/'+current.code+'/course-step',{step:step+1},current.key);acceptNavigation(result,current)}
-  catch(err){if(room===current)status.textContent=err.message;button.disabled=false}
-  finally{busy=false}
+ if(teacher&&step!==3)$('#advanceCourse').onclick=async e=>{
+  const button=e.currentTarget;button.disabled=true;
+  try{await advanceCourseStep(step)}catch(err){status.textContent=err.message}
+  finally{button.disabled=false}
  };
  window.scrollTo(0,0);
  return true;
 }
+async function advanceCourseStep(step){
+ const current=room;
+ if(current?.role!=='teacher'||current.courseStep!==step||busy)throw Error('请由开课教师切换，或稍后重试。');
+ busy=true;
+ try{
+  const result=await roomRequest('/api/room/'+current.code+'/course-step',{step:step+1},current.key);
+  acceptNavigation(result,current);
+  window.scrollTo(0,0);
+ }finally{busy=false}
+}
+window.advanceToComposition=()=>advanceCourseStep(3);
 async function returnToLanting(){
  const current=room;if(busy||current?.role!=='teacher')return;
  busy=true;try{
@@ -139,37 +143,16 @@ window.submitCourseStructure=async answers=>{
  if(room?.role!=='student'||room.courseStep!==3)throw Error('请在结字活动中提交。');
  return roomRequest('/api/room/'+room.code+'/structure',{student:room.student,answers});
 };
-async function getStructureStats(){
- const target=$('#structureStats'),button=$('#refreshStructure'),current=room;
- if(!target||!button||button.disabled)return;
- const draw=$('#drawStructure');
- if(draw?.disabled)return;
- $('#structureProjection').replaceChildren();
- button.disabled=true;if(draw)draw.disabled=true;
- try{
-  const {total,perfect,wrong}=await roomRequest('/api/room/'+current.code+'/structure-stats',{},current.key);
-  if(!target.isConnected)return;
-  button.textContent='刷新统计';
-  target.innerHTML=total?`<p>已有 <strong>${total}</strong> 份提交，五题全对 <strong>${perfect}</strong> 人（${Math.round(100*perfect/total)}%）。</p><table><thead><tr><th scope="col">例字</th><th scope="col">选错人数</th></tr></thead><tbody>${['篆书','隶书','楷书','行书','草书'].map((k,i)=>'<tr><th scope="row">'+k+'</th><td>'+wrong[i]+'</td></tr>').join('')}</tbody></table>`:'<p>还没有同学提交。</p>';
- }catch(err){target.textContent=err.message}
- finally{button.disabled=false;if(draw)draw.disabled=false}
-}
-
-function bindStructureDraw(){
- const button=$('#drawStructure'), output=$('#structureProjection'), stats=$('#refreshStructure'),current=room;
- const names=['篆书','隶书','楷书','行书','草书'];
- const choices={A:'横向取势，字形较扁',B:'结构严谨，形体方整',C:'纵向取势，对称修长',D:'变化莫测，奥妙绝伦',E:'左低右高，刚柔并济'};
- let previous=0;
- button.onclick=async()=>{
-  if(button.disabled||stats.disabled)return;
-  button.disabled=stats.disabled=true;$('#structureStats').replaceChildren();stats.textContent='查看统计';output.textContent='正在抽取……';
-  try{
-   const {sample}=await roomRequest('/api/room/'+current.code+'/structure-draw',{previous},current.key);
-   if(!output.isConnected)return;
-   if(!sample){output.textContent='还没有同学提交判断。';return}
-   previous=sample.id;
-   output.innerHTML=`<h3>一位同学的判断</h3><table><thead><tr><th scope="col">书体</th><th scope="col">同学的选择</th><th scope="col">判断结果</th></tr></thead><tbody>${names.map((name,i)=>`<tr><th scope="row">${name}</th><td>${esc(choices[sample.answers[i]])}</td><td>${sample.answers[i]===sample.expected[i]?'相符':'可再观察'}</td></tr>`).join('')}</tbody></table>`;
-  }catch(e){output.textContent=e.message}
-  finally{button.disabled=stats.disabled=false}
- };
-}
+window.structureClassroom=async action=>{
+ const current=room;
+ if(current?.courseStep!==3)throw Error('请先进入“结字之美”。');
+ if(action==='state')return {open:current.activityOpen};
+ if(current.role!=='teacher')throw Error('请由开课教师操作。');
+ if(action==='stats')return roomRequest('/api/room/'+current.code+'/structure-stats',{},current.key);
+ if(action==='toggle'){
+  const next=await roomRequest('/api/room/'+current.code+'/activity-gate',{open:!current.activityOpen,revision:current.navRevision},current.key);
+  acceptNavigation(next,current);
+  return {open:next.activityOpen};
+ }
+ throw Error('无法执行此课堂操作。');
+};

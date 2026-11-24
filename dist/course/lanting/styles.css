@@ -70,3 +70,7 @@
 .lanting-oral figcaption{padding:8px 4px;overflow-wrap:anywhere}
 
 .oral-recap{margin-top:16px;text-align:center}.oral-recap summary{cursor:pointer}.oral-recap p{color:var(--red);font-size:clamp(1.4rem,4vw,2.4rem);font-weight:700}
+
+.lanting-oral #oralImages[data-view="whole"]{grid-template-columns:1fr}
+.lanting-oral #oralImages[data-view="whole"] img{display:block;height:auto;max-height:33vh}
+.lanting-oral #oralImages[data-view="ink"] img{background:white}

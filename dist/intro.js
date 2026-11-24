@@ -241,7 +241,7 @@ function renderScriptMatch(module,role){
   `<button type="button" class="script-chip" data-script="${i}">${scriptWorks[i][1]}</button>`).join('');
  module.innerHTML=`<section class="intro-panel script-panel"><h1>活动一｜辨书体</h1><p>你能认出下面五种代表性书体吗？</p>${teacher?'':'<p>点一幅作品，再点下面的书体名称。五幅都连好后提交。</p>'}
  <div id="scriptBoard"><svg id="scriptLines" aria-hidden="true"></svg><div class="script-grid">${cards}</div><div class="script-grid script-names">${chips}</div></div>
- ${teacher?'<div class="expression-actions script-controls"><button type="button" id="toggleScriptGate" class="primary"></button><button type="button" id="seeScriptStats">查看统计结果</button><span id="scriptGateStatus" role="status"></span></div><div id="scriptStats" aria-live="polite"></div><div id="scriptCompare"></div><details class="classroom-recap"><summary>辨书体小结</summary><p>字形各异，美感不同。</p></details>':
+ ${teacher?'<div class="expression-actions script-controls"><button type="button" id="toggleScriptGate" class="primary"></button><button type="button" id="seeScriptStats">查看统计结果</button><span id="scriptGateStatus" role="status"></span></div><div id="scriptStats" aria-live="polite"></div><details class="classroom-recap"><summary>辨书体小结</summary><p>形有变，美不同。</p></details>':
  '<div class="expression-actions script-controls"><span id="scriptProgress"></span><button type="button" id="clearScript">重新连线</button><button type="button" id="submitScript" class="primary">提交连线</button></div><p id="scriptFeedback" role="status"></p>'}</section>`;
  if(teacher){
   const toggle=$('#toggleScriptGate'), stats=$('#seeScriptStats');
@@ -307,7 +307,7 @@ async function toggleScriptGate(e){
  finally{busy=false;button.disabled=false}
 }
 async function showScriptStats(e){
- const current=room,button=e.currentTarget,target=$('#scriptStats'),comparison=$('#scriptCompare');
+ const current=room,button=e.currentTarget,target=$('#scriptStats');
  button.disabled=true;
  try{
   const {total,perfect,wrong,pairs}=await roomRequest('/api/room/'+current.code+'/script-stats',{},current.key);
@@ -316,13 +316,7 @@ async function showScriptStats(e){
   const ranked=Object.entries(pairs).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
   target.innerHTML=total?`<h2>课堂统计</h2><p>已提交 <strong>${total}</strong> 人 · 五幅全对 <strong>${perfect}</strong> 人</p>
    <h3>各幅作品的错误率</h3><div class="script-bars">${wrong.map((n,i)=>`<div><span>${scriptWorks[i][1]}</span><meter min="0" max="${total}" value="${n}" aria-label="${scriptWorks[i][1]}认错人数"></meter><span>${n}/${total} 人 · ${Math.round(n/total*100)}%</span></div>`).join('')}</div>
-   <h3>哪些书体容易混淆？</h3>${ranked.length?'<p class="intro-explain">同一对书体，两个方向合在一起；同一位同学在这一对里只计一次。</p><div class="expression-actions script-pairs">'+ranked.map(([pair,n])=>{const [a,b]=pair.split(':').map(Number);return `<button type="button" data-pair="${pair}">${scriptWorks[a][1]}和${scriptWorks[b][1]} · ${n}人</button>`}).join('')+'</div>':'<p>这次没有出现书体混淆。</p>'}`:'<p>还没有收到提交。</p>';
-  comparison.replaceChildren();
-  target.querySelectorAll('[data-pair]').forEach(b=>b.onclick=()=>{
-   const pair=b.dataset.pair.split(':').map(Number);
-   comparison.innerHTML=`<h2>放在一起再看一看</h2><div class="intro-comparison">${pair.map(i=>{const [file,name,title]=scriptWorks[i];return `<figure>${introPhoto(file,title)}<figcaption><strong>${name}</strong> · ${title}</figcaption></figure>`}).join('')}</div>`;
-   comparison.scrollIntoView({block:'nearest'});
-  });
+   <h3>哪些书体容易混淆？</h3>${ranked.length?'<ul class="script-pairs">'+ranked.map(([pair,n])=>{const [a,b]=pair.split(':').map(Number);return `<li>${scriptWorks[a][1]}和${scriptWorks[b][1]} · ${n} 人</li>`}).join('')+'</ul>':'<p>这次没有出现书体混淆。</p>'}`:'<p>还没有收到提交。</p>';
  }catch(err){target.textContent=err.message}
  finally{button.disabled=false}
 }
