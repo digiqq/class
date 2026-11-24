@@ -34,3 +34,6 @@
 .pen-answer-gallery figcaption p{font-size:.88rem;margin:.3rem 0}
 #penErrorReview .canvas{margin:0 auto 12px}
 #penErrorReview .option-list{position:static;display:grid}
+
+.answer-slot{display:block;min-height:1.5em;font-weight:700}
+.pen-statements{list-style:none;padding:0;display:grid;gap:.45em}

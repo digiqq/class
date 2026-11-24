@@ -30,5 +30,5 @@ async function structureAction(action){
 window.setStructureOpen=open=>{
  if(structureOpen===open)return;
  structureOpen=open;
- if(step===1)render();
+ render();
 };

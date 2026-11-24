@@ -44,3 +44,11 @@ nav{grid-template-columns:repeat(2,minmax(0,1fr))}.lesson-end{margin-top:26px}.l
 .composition-next{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:18px}
 .composition-next button,.composition-next a{background:#a45d4e;color:#fff;border:1px solid #a45d4e;border-radius:10px;padding:10px 16px;font-weight:700;text-decoration:none}
 .composition-next p{margin:0;color:#8c3830}
+
+.composition-next{justify-content:space-between}
+.composition-next #backToShapes{background:#fff;color:#733d34}
+.composition-next:has(#backToShapes){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.composition-next #backToShapes{grid-column:1;grid-row:1;justify-self:start}
+.composition-next #toComposition{grid-column:2;grid-row:1;justify-self:end}
+#compositionStatus{grid-column:1/-1}
+#compositionStatus:empty{display:none}

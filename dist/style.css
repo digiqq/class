@@ -240,3 +240,9 @@ nav:has(button[hidden]){grid-template-columns:1fr;justify-items:start}
  #joinRoom input,#stage input,#stage textarea{font-size:16px}
 }
 @media(max-width:360px){#joinRoom{grid-template-columns:minmax(0,1fr) auto}#joinRoom label{grid-column:1/-1}}
+
+/* Reserve a separate band for joining; the title image never shares that space. */
+.intro-cover:has(.cover-invite #showJoinQr){aspect-ratio:auto;display:grid;grid-template-columns:1fr;grid-template-rows:auto auto}
+.intro-cover:has(.cover-invite #showJoinQr) .cover-scroll-art{position:relative;inset:auto;transform:none;grid-row:2}
+.intro-cover .classroom-bar.cover-invite:has(#showJoinQr){grid-row:1;position:relative;inset:auto;justify-self:end;padding:8px 12px;max-width:none}
+.intro-cover .cover-invite #showJoinQr{width:clamp(54px,7vw,86px)}

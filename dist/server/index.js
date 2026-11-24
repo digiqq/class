@@ -94,18 +94,13 @@ async function api(req,env,url){
   }
   if(room.intro_stage!==7)return json({error:'请先进入辨书体。'},409);
   const rows=(await db.prepare('SELECT answers FROM zhangfa_script_answers WHERE room_code=?').bind(code).all()).results;
-  const matrix=scripts.map(()=>scripts.map(()=>0)),pairs={};let perfect=0;
+  const wrong=scripts.map(()=>0);let perfect=0;
   for(const {answers} of rows){
    const values=JSON.parse(answers);
-   const confused=new Set();
-   values.forEach((value,i)=>{
-    const j=scripts.indexOf(value);matrix[i][j]++;
-    if(i!==j)confused.add([Math.min(i,j),Math.max(i,j)].join(':'));
-   });
-   for(const pair of confused)pairs[pair]=(pairs[pair]||0)+1;
+   values.forEach((value,i)=>{if(value!==scripts[i])wrong[i]++});
    if(values.every((value,i)=>value===scripts[i]))perfect++;
   }
-  return json({total:rows.length,perfect,wrong:matrix.map((row,i)=>rows.length-row[i]),pairs});
+  return json({total:rows.length,perfect,wrong});
  }
  if(action?.startsWith('lanting-')&&req.method==='POST'){
   if(room.course_step!==1||room.intro_stage!==8)return json({error:'《兰亭序》活动已经结束。'},409);
@@ -151,8 +146,8 @@ async function api(req,env,url){
   let step;try{step=(await req.json())?.step}catch{return json({error:'请求格式错误。'},400)}
   if(room.phase!==0||room.course_step<1||(room.course_step===1&&(room.lanting_round<4||room.intro_stage!==8))||step!==room.course_step+1||step>4)return json({error:'课堂环节已变更，请刷新后重试。'},409);
   const phase=step===4?1:0;
-  const r=await env.DB.prepare('UPDATE zhangfa_rooms SET course_step=?,phase=?,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND course_step=? AND phase=0 AND nav_revision=?').bind(step,phase,Number(step===3),m[1],room.course_step,room.nav_revision).run();
-  return r.meta.changes?json({...state(phase,step,room.lanting_round,room.nav_revision+1),activityOpen:step===3}):json({error:'课堂环节已变更，请刷新后重试。'},409);
+  const r=await env.DB.prepare('UPDATE zhangfa_rooms SET course_step=?,phase=?,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND course_step=? AND phase=0 AND nav_revision=?').bind(step,phase,0,m[1],room.course_step,room.nav_revision).run();
+  return r.meta.changes?json({...state(phase,step,room.lanting_round,room.nav_revision+1),activityOpen:false}):json({error:'课堂环节已变更，请刷新后重试。'},409);
  }
  if(action?.startsWith('pen-match')){
   if(room.course_step!==2)return json({error:'请先进入“用笔之美”。'},409);
@@ -362,10 +357,14 @@ async function api(req,env,url){
   let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
   const work=body?.work,previous=typeof body?.previous==='string'?body.previous:'';
   if(!Number.isInteger(work)||work<0||work>4)return json({error:'请先选择要展示的作品。'},400);
-  const row=await env.DB.prepare(`SELECT student_key,work,observation,feelings,own_feeling,expression
-    FROM zhangfa_expressions WHERE room_code=? AND work=?
-    ORDER BY student_key=? ASC,RANDOM() LIMIT 1`).bind(m[1],work,previous).first();
-  return json({sample:row?{student:row.student_key,work:row.work,observation:JSON.parse(row.observation),feelings:JSON.parse(row.feelings),ownFeeling:row.own_feeling,expression:row.expression}:null});
+  const row=await env.DB.prepare(`WITH roster AS (
+    SELECT student_key, ROW_NUMBER() OVER (ORDER BY MIN(rowid)) AS student_no
+    FROM zhangfa_expressions WHERE room_code=? GROUP BY student_key
+   )
+   SELECT e.student_key,work,observation,feelings,own_feeling,expression,student_no
+    FROM zhangfa_expressions e JOIN roster r ON e.student_key=r.student_key WHERE e.room_code=? AND work=?
+    ORDER BY e.student_key=? ASC,RANDOM() LIMIT 1`).bind(m[1],m[1],work,previous).first();
+  return json({sample:row?{student:row.student_key,studentNumber:row.student_no,work:row.work,observation:JSON.parse(row.observation),feelings:JSON.parse(row.feelings),ownFeeling:row.own_feeling,expression:row.expression}:null});
  }
  if(action)return json({error:'请求方法不支持。'},405);
  if(req.method==='GET')return json({...state(room.phase,room.course_step,room.lanting_round,room.nav_revision),introStage:room.intro_stage,scriptOpen:room.script_open===1,activityOpen:room.activity_open===1});

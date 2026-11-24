@@ -9,9 +9,13 @@
 
  observation.innerHTML=`<div class="prompt-card">
    <span class="prompt-no">观察任务 02 · 细分辨</span>
-   <h2>再看前三幅，它们真的一样吗？</h2>
+   <h2>仔细观察前三幅，它们真的一模一样吗？</h2>
  </div><div class="works-grid oral-whole-grid" id="oralImages">${firstThree.map(v=>`<figure class="work-card"><img alt=""><figcaption>${v.name.replace('（局部）','')}</figcaption></figure>`).join('')}</div>
- <section class="oral-recap" id="oralRecap" hidden><h3>观察小结</h3><p>形相近，美不同。</p></section>`;
+ <section class="oral-recap" id="oralRecap" hidden><button type="button" class="ghost-btn" id="revealOralRecap" aria-expanded="false">观察小结</button><p id="oralRecapText" hidden>形相近，美不同。</p></section>`;
+ $('#revealOralRecap').onclick=()=>{
+  $('#oralRecapText').hidden=false;
+  $('#revealOralRecap').setAttribute('aria-expanded','true');
+ };
  $('.topbar').hidden=!teacher;
  const choices=$$('#worksGrid .work-card');
  for(const button of choices)button.onclick=()=>{
@@ -25,6 +29,9 @@
   $$('#oralImages img').forEach((img,i)=>{
    const v=firstThree[i];
    img.src=`assets/${v.id}-${variants[view]}.${view===2?'jpeg':'jpg'}`;
+   img.tabIndex=view===0?0:-1;
+   img.onclick=view===0?()=>navigate(1):null;
+   img.onkeydown=view===0?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigate(1)}}:null;
    img.alt=v.name.replace('（局部）','')+(view?'中的永和九年':'全文图');
   });
   $('#oralRecap').hidden=view!==2;
@@ -56,11 +63,6 @@
  }
  back.onclick=()=>navigate(-1);
  next.onclick=()=>navigate(1);
- document.addEventListener('click',event=>{
-  if(round!==2||event.target.closest('button,a,img,figcaption,input,select,textarea'))return;
-  if(window.getSelection()?.toString())return;
-  navigate(1);
- });
  window.setLantingStage=value=>{
   const stage=value===3?2:value===5?4:value;
   if(round===stage||![1,2,4].includes(stage))return;

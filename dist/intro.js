@@ -241,7 +241,7 @@ function renderScriptMatch(module,role){
   `<button type="button" class="script-chip" data-script="${i}">${scriptWorks[i][1]}</button>`).join('');
  module.innerHTML=`<section class="intro-panel script-panel"><h1>活动一｜辨书体</h1><p>你能认出下面五种代表性书体吗？</p>${teacher?'':'<p>点一幅作品，再点下面的书体名称。五幅都连好后提交。</p>'}
  <div id="scriptBoard"><svg id="scriptLines" aria-hidden="true"></svg><div class="script-grid">${cards}</div><div class="script-grid script-names">${chips}</div></div>
- ${teacher?'<div class="expression-actions script-controls"><button type="button" id="toggleScriptGate" class="primary"></button><button type="button" id="seeScriptStats">查看统计结果</button><span id="scriptGateStatus" role="status"></span></div><div id="scriptStats" aria-live="polite"></div><details class="classroom-recap"><summary>辨书体小结</summary><p>形有变，美不同。</p></details>':
+ ${teacher?'<div class="expression-actions script-controls"><button type="button" id="toggleScriptGate" class="primary"></button><button type="button" id="seeScriptStats">查看统计结果</button><span id="scriptGateStatus" role="status"></span></div><div id="scriptStats" aria-live="polite"></div><details id="scriptRecap" class="classroom-recap" hidden><summary>辨书体小结</summary><p>形有变，美不同。</p></details>':
  '<div class="expression-actions script-controls"><span id="scriptProgress"></span><button type="button" id="clearScript">重新连线</button><button type="button" id="submitScript" class="primary">提交连线</button></div><p id="scriptFeedback" role="status"></p>'}</section>`;
  if(teacher){
   const toggle=$('#toggleScriptGate'), stats=$('#seeScriptStats');
@@ -310,13 +310,11 @@ async function showScriptStats(e){
  const current=room,button=e.currentTarget,target=$('#scriptStats');
  button.disabled=true;
  try{
-  const {total,perfect,wrong,pairs}=await roomRequest('/api/room/'+current.code+'/script-stats',{},current.key);
+  const {total,wrong}=await roomRequest('/api/room/'+current.code+'/script-stats',{},current.key);
   if(!target.isConnected)return;
   button.textContent='刷新统计结果';
-  const ranked=Object.entries(pairs).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
-  target.innerHTML=total?`<h2>课堂统计</h2><p>已提交 <strong>${total}</strong> 人 · 五幅全对 <strong>${perfect}</strong> 人</p>
-   <h3>各幅作品的错误率</h3><div class="script-bars">${wrong.map((n,i)=>`<div><span>${scriptWorks[i][1]}</span><meter min="0" max="${total}" value="${n}" aria-label="${scriptWorks[i][1]}认错人数"></meter><span>${n}/${total} 人 · ${Math.round(n/total*100)}%</span></div>`).join('')}</div>
-   <h3>哪些书体容易混淆？</h3>${ranked.length?'<ul class="script-pairs">'+ranked.map(([pair,n])=>{const [a,b]=pair.split(':').map(Number);return `<li>${scriptWorks[a][1]}和${scriptWorks[b][1]} · ${n} 人</li>`}).join('')+'</ul>':'<p>这次没有出现书体混淆。</p>'}`:'<p>还没有收到提交。</p>';
+  $('#scriptRecap').hidden=false;
+  target.innerHTML=total?`<h2>各书体作品辨识正确率</h2><div class="script-bars">${wrong.map((n,i)=>`<div><span>${scriptWorks[i][1]}</span><meter min="0" max="${total}" value="${total-n}" aria-label="${scriptWorks[i][1]}正确人数"></meter><span>${total-n}/${total} 人 · ${Math.round((total-n)/total*100)}% 正确 · ${Math.round(n/total*100)}% 错误</span></div>`).join('')}</div>`:'<p>还没有收到提交。</p>';
  }catch(err){target.textContent=err.message}
  finally{button.disabled=false}
 }

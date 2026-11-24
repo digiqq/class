@@ -13,15 +13,10 @@ function renderCourseShell(){
  bar.classList.toggle('cover-invite',isOpeningCover);
  bar.classList.toggle('classroom-flow',!!room?.courseStep&&!isOpeningCover);
  bar.hidden=false;
- route.hidden=!integrated||step<=3;
+ route.hidden=true;
  if(!integrated){document.title='章法之美';module.replaceChildren();shownCourse='';module.hidden=true;return false}
  document.title='书法艺术的魅力 · 互动课堂';
  const index=Math.max(0,room?.phase===7?4:step-1);
- if(!route.hidden)route.innerHTML='<ol aria-label="课堂进度">'+courseLabels.map((label,i)=>'<li '+(i===index?'aria-current="step"':i<index?'data-done="true"':'')+'><span>'+(i+1)+'</span>'+label+'</li>').join('')+'</ol>';
- if(room?.role==='teacher'&&step>=4){
-  route.insertAdjacentHTML('beforeend','<button type="button" id="backToLanting">回看《兰亭序》三幅对比</button>');
-  $('#backToLanting').onclick=()=>returnToLanting();
- }
  if(step>=4){module.hidden=true;module.replaceChildren();shownCourse='';return false}
  lesson.hidden=true;module.hidden=false;
  if(step<=1&&((room&&(room.introStage??8)<8)||(!room&&!params.has('preview')&&!wantsJoin))){
@@ -39,7 +34,7 @@ function renderCourseShell(){
   }
   if(identity!==shownCourse){
    shownCourse=identity;
-   module.innerHTML=`<iframe class="course-frame" title="${courseLabels[0]}" src="/course/lanting/index.html?v=classroom-refine-20261124&amp;role=${room?.role||'preview'}&amp;round=${round}"></iframe>`;
+   module.innerHTML=`<iframe class="course-frame" title="${courseLabels[0]}" src="/course/lanting/index.html?v=classroom-polish-20261125&amp;role=${room?.role||'preview'}&amp;round=${round}"></iframe>`;
    bindCourseFrame(module,iframe=>iframe.contentWindow.setLantingStage?.(room?.lantingRound||1));
   }else if(room){
    module.querySelector('iframe')?.contentWindow?.setLantingStage?.(round);
@@ -53,10 +48,10 @@ function renderCourseShell(){
  if(shownCourse===identity){if(step===3)module.querySelector('iframe')?.contentWindow?.setStructureOpen?.(room.activityOpen);return true}
  shownCourse=identity;
  const teacher=room.role==='teacher';
- const frame=`<iframe class="course-frame" title="${courseLabels[index]}" src="/course/${courseFiles[index]}/index.html?v=${step===3?'jiezi-next-20261124':'classroom-refine-20261124'}&amp;role=${room.role}&amp;class=${room.code}"></iframe>`;
+ const frame=`<iframe class="course-frame" title="${courseLabels[index]}" src="/course/${courseFiles[index]}/index.html?v=classroom-polish-20261125&amp;role=${room.role}&amp;class=${room.code}"></iframe>`;
  const advance=teacher&&step!==3?`<button type="button" id="advanceCourse" class="primary">进入${courseLabels[step]}</button>`:'';
  module.innerHTML=frame;
- if(teacher)module.insertAdjacentHTML('beforeend',`<div class="course-lead course-page-actions">${previousButton}${advance}</div>`);
+ if(teacher&&step!==3)module.insertAdjacentHTML('beforeend',`<div class="course-lead course-page-actions">${previousButton}${advance}</div>`);
  bindPreviousPage(module.querySelector('[data-room-back]'));
  bindCourseFrame(module);
  if(teacher&&step!==3)$('#advanceCourse').onclick=async e=>{
@@ -143,14 +138,15 @@ window.submitCourseStructure=async answers=>{
  if(room?.role!=='student'||room.courseStep!==3)throw Error('请在结字活动中提交。');
  return roomRequest('/api/room/'+room.code+'/structure',{student:room.student,answers});
 };
-window.structureClassroom=async action=>{
+window.structureClassroom=async (action,open)=>{
  const current=room;
  if(current?.courseStep!==3)throw Error('请先进入“结字之美”。');
  if(action==='state')return {open:current.activityOpen};
  if(current.role!=='teacher')throw Error('请由开课教师操作。');
  if(action==='stats')return roomRequest('/api/room/'+current.code+'/structure-stats',{},current.key);
- if(action==='toggle'){
-  const next=await roomRequest('/api/room/'+current.code+'/activity-gate',{open:!current.activityOpen,revision:current.navRevision},current.key);
+ if(action==='toggle'||action==='set'){
+  if(action==='set'&&open===current.activityOpen)return {open};
+  const next=await roomRequest('/api/room/'+current.code+'/activity-gate',{open:action==='set'?open:!current.activityOpen,revision:current.navRevision},current.key);
   acceptNavigation(next,current);
   return {open:next.activityOpen};
  }

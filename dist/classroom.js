@@ -78,8 +78,8 @@ function schedulePoll(){
 }
 function acceptNavigation(data,current){
  if(room!==current||(data.navRevision||0)<(current.navRevision||0))return;
- projectedExpression=null;lastDrawn=null;projectedFirst=null;lastFirst=null;projectedReview=null;reviewComparison=false;
  if(data.navRevision===current.navRevision&&data.activityOpen===current.activityOpen)return;
+ projectedExpression=null;lastDrawn=null;projectedFirst=null;lastFirst=null;projectedReview=null;reviewComparison=false;
  Object.assign(current,data);storeRoom();applyPhase();
 }
 window.previousClassroomPage=async ()=>{
@@ -212,7 +212,7 @@ async function drawExpression(button){
   $('#expressionProjection').innerHTML=projectionPanel();$('#closeExpression').hidden=!sample;
   $('#drawStatus').textContent=sample?'已随机展示'+label+'的一份学生表达。':label+'还没有收到表达，请同学们点击“完成我的表达”。';
   button.textContent=sample?'再抽一位同学':'随机展示作品'+(work+1)+'的表达';
-  if(sample)$('#expressionProjection').scrollIntoView({block:'start'});
+  if($('#drawStudentNumber'))$('#drawStudentNumber').textContent=sample?`课堂学号：${sample.studentNumber}`:'';
  }catch(e){if(button.isConnected)$('#drawStatus').textContent=e.message}
  finally{button.disabled=false}
 }
@@ -233,12 +233,17 @@ function bindActivityGate(){
  if(![2,4,6,7].includes(room.phase))return;
  const current=room, button=document.createElement('button');
  button.type='button';button.className='primary';
- button.textContent=current.activityOpen?'暂停学生作答':'开放学生端作答';
- $('#stage').prepend(button);
+ button.textContent=current.activityOpen?'暂停学生端作答':'开放学生端作答';
+ const container=$('#compositionGate'), controls=container?[...container.querySelectorAll('button')]:[button];
+ if(!container)$('#stage').prepend(button);
+ for(const button of controls){
+ const open=container?button.dataset.gate==='open':!current.activityOpen;
+ if(container)button.disabled=open===current.activityOpen;
  button.onclick=async()=>{if(busy)return;busy=true;button.disabled=true;try{
-  const data=await roomRequest('/api/room/'+current.code+'/activity-gate',{open:!current.activityOpen,revision:current.navRevision},current.key);
+  const data=await roomRequest('/api/room/'+current.code+'/activity-gate',{open,revision:current.navRevision},current.key);
   acceptNavigation(data,current);
  }catch(e){status.textContent=e.message}finally{busy=false;button.disabled=false}};
+ }
 }
 function renderTeacher(){
  if(!room||room.role!=='teacher')return;
@@ -248,10 +253,10 @@ function renderTeacher(){
  $('#intro').hidden=phase>1;
  let body='';
  if(phase===0)body=phaseButton(1,'解词义 · 明章法');
- if(phase===1)body=`<div class="originals-static">${works.slice(0,5).map((w,i)=>`<figure>${art(i)}<figcaption>${w.name}</figcaption></figure>`).join('')}</div><h2 class="spaced">想一想</h2><p>你会用下列哪些词语描述这些作品的排列？点一个词，借助下方的示意图，了解它代表的排列形式。</p><div class="choices teacher-word-buttons">${terms.map((t,i)=>`<button type="button" data-teacher-word="${i}" aria-pressed="false">${t}</button>`).join('')}</div><div id="teacherArrangement"></div>`+phaseButton(2,'选一选 · 说感受');
- if(phase===2)body=`<h2>选一选，说感受</h2><p>选一幅作品观察，在自己的设备上记录发现和感受。</p><div class="work-strip">${works.slice(0,5).map((w,i)=>`<button class="thumb" data-project="${i}" aria-pressed="${teacherWork===i}">${art(i)}<span>${w.name}</span></button>`).join('')}</div><article class="artcard projected-art" id="projectedWork"><h3>${works[teacherWork].name}</h3>${art(teacherWork)}</article>`+`<div class="expression-actions spaced"><button id="drawExpression" class="primary">${projectedExpression?'再抽一位同学':'随机展示作品'+(teacherWork+1)+'的表达'}</button><button id="closeExpression" ${projectedExpression?'':'hidden'}>收起表达</button></div><p id="drawStatus" role="status"></p><div id="expressionProjection">${projectionPanel()}</div>`+phaseButton(3,'赏章法 · 悟表达');
+ if(phase===1)body=`<div class="originals-static">${works.slice(0,5).map((w,i)=>`<figure>${art(i)}<figcaption>${w.name}</figcaption></figure>`).join('')}</div><h2 class="spaced">想一想</h2><p>借助下方示意图了解每个词代表的排列形式。</p><div class="choices teacher-word-buttons">${terms.map((t,i)=>`<button type="button" data-teacher-word="${i}" aria-pressed="false">${t}</button>`).join('')}</div><div id="teacherArrangement"></div>`+phaseButton(2,'选一选 · 说感受');
+ if(phase===2)body=`<h2>选一选，说感受</h2><p>选一幅作品观察，在自己的设备上记录发现和感受。</p><div id="compositionGate" class="expression-actions"><button type="button" data-gate="open" class="primary">开放学生端作答</button><button type="button" data-gate="pause">暂停学生端作答</button></div><div class="work-strip">${works.slice(0,5).map((w,i)=>`<button class="thumb" data-project="${i}" aria-pressed="${teacherWork===i}">${art(i)}<span>${w.name}</span></button>`).join('')}</div><article class="artcard projected-art" id="projectedWork"><h3>${works[teacherWork].name}</h3>${art(teacherWork)}</article>`+`<div class="expression-actions spaced"><button id="drawExpression" class="primary">${projectedExpression?'再抽一位同学':'随机展示作品'+(teacherWork+1)+'的表达'}</button><span id="drawStudentNumber" aria-live="polite">${projectedExpression?'课堂学号：'+projectedExpression.studentNumber:''}</span><button id="closeExpression" ${projectedExpression?'':'hidden'}>收起表达</button></div><p id="drawStatus" role="status"></p><div id="expressionProjection">${projectionPanel()}</div>`+phaseButton(3,'赏章法 · 悟表达');
  if(phase===3||phase===4){
-  body=`<p class="sub">有这样一幅与众不同的作品，被誉为“天下第二行书”。它又会带给我们怎样的章法之美呢？让我们一起走进它。</p><button id="teacherOpen" aria-expanded="false">颜真卿《祭侄文稿》</button><article class="artcard spaced" id="teacherArtwork" hidden><h2>初看作品</h2>${specialArt()}${zoomControls()}</article>`+(phase===4?`<div class="expression-actions spaced"><button id="drawFirst" class="primary">${projectedFirst?'再抽一位同学':'随机展示初感受'}</button><button id="closeFirst" ${projectedFirst?'':'hidden'}>收起初印象</button></div><p id="drawFirstStatus" role="status"></p><div id="firstProjection">${firstProjection()}</div>`:'')+(phase===3?phaseButton(4,'初发现 · 初感受'):phaseButton(5,'了解背景'));
+  body=`<p class="sub">有这样一幅与众不同的作品，被誉为“天下第二行书”。它又会带给我们怎样的章法之美呢？让我们一起走进它。</p><button id="teacherOpen" aria-expanded="false">颜真卿《祭侄文稿》</button><article class="artcard spaced" id="teacherArtwork" hidden>${specialArt()}</article>`+(phase===4?`<div class="expression-actions spaced"><button id="drawFirst" class="primary">${projectedFirst?'再抽一位同学':'随机展示初感受'}</button><button id="closeFirst" ${projectedFirst?'':'hidden'}>收起初印象</button></div><p id="drawFirstStatus" role="status"></p><div id="firstProjection">${firstProjection()}</div>`:'')+(phase===3?phaseButton(4,'初发现 · 初感受'):phaseButton(5,'了解背景'));
  }
  if(phase===5)body='<h2>了解背景</h2><div class="story-video"><video controls playsinline preload="metadata" aria-label="祭侄文稿创作背景视频" src="/assets/jizhi-story.mp4"></video></div>'+phaseButton(6,'再赏析');
  if(phase===6)body=`<article class="artcard"><h2>再赏原作</h2>${specialArt()}${zoomControls()}</article><h2 class="spaced">找一找</h2><p>带着对故事的了解，再看看这些笔迹。你会有什么不同的感受呢？</p>${phase===6?`<div class="review-project-actions"><button id="drawReview" class="primary">${projectedReview?'再抽一位同学':'随机展示再赏感受'}</button><button id="compareReview">对照两次感受</button></div><p id="drawReviewStatus" role="status"></p><div id="reviewProjection">${reviewProjection()}</div>`:''}` +`<div class="classroom-recap"><button type="button" id="showClassRecap" aria-expanded="false" aria-controls="classRecap">本课小结</button><div id="classRecap" hidden><p>一笔有生命，<br>一字有姿态，<br>一篇有情感。</p></div></div>`+phaseButton(7,'进入艺术实践');
@@ -273,7 +278,7 @@ function renderTeacher(){
  if($('#drawFirst'))$('#drawFirst').onclick=e=>drawFirstImpression(e.currentTarget);
  if($('#closeFirst'))$('#closeFirst').onclick=()=>{projectedFirst=null;$('#firstProjection').innerHTML='';$('#closeFirst').hidden=true;$('#drawFirst').textContent='随机展示初感受';$('#drawFirstStatus').textContent=''};
  if($('#drawExpression'))$('#drawExpression').onclick=e=>drawExpression(e.currentTarget);
- if($('#closeExpression'))$('#closeExpression').onclick=()=>{projectedExpression=null;$('#expressionProjection').innerHTML='';$('#closeExpression').hidden=true;$('#drawExpression').textContent='随机展示作品'+(teacherWork+1)+'的表达';$('#drawStatus').textContent=''};
+ if($('#closeExpression'))$('#closeExpression').onclick=()=>{projectedExpression=null;$('#expressionProjection').innerHTML='';$('#closeExpression').hidden=true;$('#drawExpression').textContent='随机展示作品'+(teacherWork+1)+'的表达';$('#drawStatus').textContent='';$('#drawStudentNumber').textContent=''};
  document.querySelectorAll('[data-advance]').forEach(b=>b.onclick=async()=>{if(busy)return;const current=room;busy=true;b.disabled=true;try{const data=await roomRequest('/api/room/'+current.code,{phase:Number(b.dataset.advance)},current.key);acceptNavigation(data,current)}catch(e){status.textContent=e.message;b.disabled=false}finally{busy=false}});
  document.querySelectorAll('[data-project]').forEach(b=>b.onclick=()=>{const next=Number(b.dataset.project);if(next!==teacherWork){teacherWork=next;projectedExpression=null;lastDrawn=null}renderTeacher();$('#projectedWork').scrollIntoView({block:'start'})});
  if($('#teacherOpen')){

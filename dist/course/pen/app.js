@@ -53,10 +53,10 @@ const persist=()=>storage(practiceKey(room),{glyph,draft,submitted});
 const completed=f=>Boolean(draft[f.id]?.answer);
 const allEntries=()=>figures.map(f=>({glyph:f.id,stroke:draft[f.id]?.stroke||0,answer:draft[f.id]?.answer}));
 const isSaved=()=>submitted&&allEntries().every(entry=>submitted.some(saved=>saved.glyph===entry.glyph&&(saved.stroke||0)===entry.stroke&&saved.answer===entry.answer));
-function gallery(interactive=false,teacher=false){
+function gallery(interactive=false,teacher=false,answers=false){
  return '<div class="gallery'+(!interactive||teacher?' teacher-gallery':'')+'">'+figures.map(f=>{
   const content=`<img src="${src(f.id)}" alt=""><span>${f.name}</span>`;
-  return interactive?`<button class="glyph-card" type="button" data-glyph="${f.id}" data-completed="${completed(f)}" aria-pressed="${selected(f.id===glyph)}">${content}<small>${completed(f)?'已选':'待选'}</small></button>`:`<div class="glyph-card">${content}</div>`;
+  return interactive?`<button class="glyph-card" type="button" data-glyph="${f.id}" data-completed="${completed(f)}" aria-pressed="${selected(f.id===glyph)}">${content}<small>${completed(f)?'已选':'待选'}</small></button>`:`<div class="glyph-card">${content}<small class="answer-slot">${answers?'表述'+f.answer:' '}</small></div>`;
  }).join('')+'</div>';
 }
 function panel(content){$('#stage').innerHTML='<section class="card">'+content+'</section>'}
@@ -74,7 +74,7 @@ function render(){
    $('#pause').onclick=e=>advance(paused?1:3,e.currentTarget);
    $('#reveal').onclick=e=>advance(2,e.currentTarget);refreshCount(room);
   }else{
-   panel('<h2>核对五组答案</h2><div class="answers pen-answer-gallery">'+figures.map(f=>`<figure><img src="${src(f.id)}" alt="${f.name}例字"><figcaption><strong>${f.name}</strong><p>${statements[f.answer-1][0]}</p></figcaption></figure>`).join('')+'</div><div class="actions"><button id="stats" aria-expanded="false">查看统计</button><button id="draw">随机看一位同学的选择</button></div><div id="statistics" hidden></div><div id="sample"></div><p class="pen-transition">刚才我们看的是一笔怎么写。现在把目光放回整个字：这些笔画是怎么安排在一起的？</p>');
+   panel(gallery(false,false,true)+'<ol class="pen-statements">'+statements.map(([word],i)=>`<li><strong>表述${i+1}：</strong>${word}</li>`).join('')+'</ol><div class="actions"><button id="stats" aria-expanded="false">查看统计</button><button id="draw">随机看一位同学的选择</button></div><div id="statistics" hidden></div><div id="sample"></div><p class="pen-transition">刚才我们看的是一笔怎么写。现在把目光放回整个字：这些笔画是怎么安排在一起的？</p>');
    $('#draw').onclick=draw;$('#stats').onclick=showStats;
   }
   return;
@@ -145,13 +145,13 @@ function chooseStroke(n){
  if(draft[glyph]?.stroke===n)return;
  draft[glyph]={...draft[glyph],stroke:n};syncPractice();
 }
-function clickStroke(e){
+function clickStroke(e,glyphId=glyph,onPick=chooseStroke){
  const im=e.currentTarget.querySelector('.glyph-base');
  if(!im?.naturalWidth)return;
  const r=im.getBoundingClientRect(),scale=Math.min(r.width/im.naturalWidth,r.height/im.naturalHeight),w=scale*im.naturalWidth,h=scale*im.naturalHeight;
  const n=hitMap.size,x=Math.floor((e.clientX-r.left-(r.width-w)/2)/w*n),y=Math.floor((e.clientY-r.top-(r.height-h)/2)/h*n);
  if(x<0||x>=n||y<0||y>=n)return;
- const data=hitMap.groups[glyph];
+ const data=hitMap.groups[glyphId];
  let best=5, picked=0;
  for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
   const d=dx*dx+dy*dy;
@@ -159,7 +159,7 @@ function clickStroke(e){
   const hit=parseInt(data[(y+dy)*n+x+dx],16);
   if(hit){best=d;picked=hit}
  }
- if(picked)chooseStroke(picked);
+ if(picked)onPick(picked);
 }
 async function submit(e){
  const current=room,entries=allEntries();
@@ -182,12 +182,15 @@ async function showStats(e){
   if(!out.isConnected)return;
   out.innerHTML=total?`<h3>课堂统计</h3><p><strong>五组全对：${perfect} / ${total} 人（${Math.round(100*perfect/total)}%）</strong></p>
   <p class="tip">按已提交的 ${total} 人统计。下面是每组答对的人数。</p>
-  <ul class="chart">${counts.map(({glyph,correct})=>`<li><label for="bar-${glyph}">${figure(glyph).name}</label><meter id="bar-${glyph}" min="0" max="${total}" value="${correct}"></meter><span>${correct} / ${total} 人</span></li>`).join('')}</ul>${counts.some(x=>x.correct<total)?`<h3>选一题，看看错在哪里</h3><div class="actions">${counts.filter(x=>x.correct<total).map(x=>`<button type="button" data-review="${x.glyph}">${figure(x.glyph).name} · ${total-x.correct} 人选错</button>`).join('')}</div><div id="penErrorReview"></div>`:'<p>五组都没有出现错选。</p>'}`:'<p>目前还没有同学提交。</p>';
+  <ul class="chart">${counts.map(({glyph,correct})=>`<li><label for="bar-${glyph}">${figure(glyph).name}</label><meter id="bar-${glyph}" min="0" max="${total}" value="${correct}"></meter><span>${correct} / ${total} 人</span></li>`).join('')}</ul>${counts.some(x=>x.correct<total)?`<h3>错误最多的表述</h3><div class="actions">${counts.filter(x=>x.correct===Math.min(...counts.map(y=>y.correct))).map(x=>`<button type="button" data-review="${x.glyph}">${figure(x.glyph).name} · ${total-x.correct} 人选错</button>`).join('')}</div><div id="penErrorReview"></div>`:'<p>五组都没有出现错选。</p>'}`:'<p>目前还没有同学提交。</p>';
   out.querySelectorAll('[data-review]').forEach(btn=>btn.onclick=()=>{
    const row=counts.find(x=>x.glyph===Number(btn.dataset.review)), f=figure(row.glyph);
    out.querySelectorAll('[data-review]').forEach(b=>b.setAttribute('aria-pressed',selected(b===btn)));
    const target=$('#penErrorReview');
-   target.innerHTML=`<h4>${f.name}</h4>${picture(f,0)}<div class="option-list" aria-label="五个可选表述">${statements.map(([word],i)=>`<button type="button" class="option" aria-pressed="false" data-review-option="${i+1}">表述${i+1}：${word} <small>· ${row.choices[i]} 人</small></button>`).join('')}</div><p class="status" role="status"></p>`;
+   target.innerHTML=`<h4>${f.name}</h4>${picture(f,0,true)}<div class="option-list" aria-label="五个可选表述">${statements.map(([word],i)=>`<button type="button" class="option" aria-pressed="false" data-review-option="${i+1}">表述${i+1}：${word} <small>· ${row.choices[i]} 人</small></button>`).join('')}</div><p class="status" role="status"></p>`;
+   const reviewGlyph=target.querySelector('#glyph');
+   const highlightStroke=n=>reviewGlyph.querySelectorAll('[data-highlight]').forEach(layer=>layer.classList.toggle('active',Number(layer.dataset.highlight)===n));
+   reviewGlyph.onclick=e=>clickStroke(e,f.id,highlightStroke);
    target.querySelectorAll('[data-review-option]').forEach(b=>b.onclick=()=>{
     target.querySelectorAll('[data-review-option]').forEach(item=>item.setAttribute('aria-pressed',selected(item===b)));
     target.querySelector('[role=status]').textContent=Number(b.dataset.reviewOption)===f.answer?'该表述符合这个例字的用笔特点。':'再看看例字的笔画，试试另一条表述。';
