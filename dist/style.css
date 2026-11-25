@@ -241,8 +241,17 @@ nav:has(button[hidden]){grid-template-columns:1fr;justify-items:start}
 }
 @media(max-width:360px){#joinRoom{grid-template-columns:minmax(0,1fr) auto}#joinRoom label{grid-column:1/-1}}
 
-/* Reserve a separate band for joining; the title image never shares that space. */
-.intro-cover:has(.cover-invite #showJoinQr){aspect-ratio:auto;display:grid;grid-template-columns:1fr;grid-template-rows:auto auto}
-.intro-cover:has(.cover-invite #showJoinQr) .cover-scroll-art{position:relative;inset:auto;transform:none;grid-row:2}
-.intro-cover .classroom-bar.cover-invite:has(#showJoinQr){grid-row:1;position:relative;inset:auto;justify-self:end;padding:8px 12px;max-width:none}
-.intro-cover .cover-invite #showJoinQr{width:clamp(54px,7vw,86px)}
+
+.intro-cover .classroom-bar.cover-invite{top:clamp(4px,1vw,12px);right:clamp(4px,1vw,12px)}
+.intro-cover .cover-invite #showJoinQr{width:clamp(42px,6vw,82px)}
+.intro-cover .cover-room-code{font-size:clamp(.62rem,1vw,.85rem);padding:0 2px}
+.manuscript-caption{text-align:right;color:#963e35;font-size:.83rem;margin:.45rem 0 0}
+
+#studentCallout:not([hidden]){display:block;margin:1rem 1.25rem;padding:1rem 1.2rem;border:2px solid #a45d4e;border-radius:12px;background:#fff3e3}
+#studentCallout h2{margin:0;color:#8c3830}
+#studentCallout blockquote{margin:.5rem 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:600}
+
+.teacher-initial-art .cue-legend,.teacher-initial-art .observation-cue text{display:none}
+#oralReview{display:block;width:100%;margin:.75rem 0;padding:.7rem;font:inherit}
+.reflection-record{overflow-wrap:anywhere}
+#teacherExtraObservation{display:block;width:100%;margin:.5rem 0;padding:.7rem;font:inherit}

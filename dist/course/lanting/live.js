@@ -1,7 +1,7 @@
 (() => {
  const query=new URLSearchParams(location.search);
  const role=query.get('role')||'preview', connected=role==='teacher', teacher=role!=='student';
- const variants=['whole','phrase','ink'], firstThree=versions.slice(0,3);
+ const variants=['detail','phrase','ink'], firstThree=versions.slice(0,3);
  const observation=$('[data-panel="2"]');
  const status=$('#liveActionStatus'),next=$('#liveAdvance'),back=$('#liveBack');
  let round=0,view=0,selected='',busy=false;
@@ -10,7 +10,7 @@
  observation.innerHTML=`<div class="prompt-card">
    <span class="prompt-no">观察任务 02 · 细分辨</span>
    <h2>仔细观察前三幅，它们真的一模一样吗？</h2>
- </div><div class="works-grid oral-whole-grid" id="oralImages">${firstThree.map(v=>`<figure class="work-card"><img alt=""><figcaption>${v.name.replace('（局部）','')}</figcaption></figure>`).join('')}</div>
+ </div><div class="works-grid oral-whole-grid" id="oralImages">${firstThree.map(v=>`<figure class="work-card"><img alt=""><figcaption>${v.name}</figcaption></figure>`).join('')}</div>
  <section class="oral-recap" id="oralRecap" hidden><button type="button" class="ghost-btn" id="revealOralRecap" aria-expanded="false">观察小结</button><p id="oralRecapText" hidden>形相近，美不同。</p></section>`;
  $('#revealOralRecap').onclick=()=>{
   $('#oralRecapText').hidden=false;
@@ -28,11 +28,11 @@
   images.dataset.view=variants[view];
   $$('#oralImages img').forEach((img,i)=>{
    const v=firstThree[i];
-   img.src=`assets/${v.id}-${variants[view]}.${view===2?'jpeg':'jpg'}`;
+   img.src=view===0?v.img:`assets/${v.id}-${variants[view]}.${view===2?'jpeg':'jpg'}`;
    img.tabIndex=view===0?0:-1;
    img.onclick=view===0?()=>navigate(1):null;
    img.onkeydown=view===0?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();navigate(1)}}:null;
-   img.alt=v.name.replace('（局部）','')+(view?'中的永和九年':'全文图');
+   img.alt=v.name.replace('（局部）','')+(view?'中的永和九年':'局部图');
   });
   $('#oralRecap').hidden=view!==2;
  }

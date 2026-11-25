@@ -74,8 +74,8 @@ function render(){
    $('#pause').onclick=e=>advance(paused?1:3,e.currentTarget);
    $('#reveal').onclick=e=>advance(2,e.currentTarget);refreshCount(room);
   }else{
-   panel(gallery(false,false,true)+'<ol class="pen-statements">'+statements.map(([word],i)=>`<li><strong>表述${i+1}：</strong>${word}</li>`).join('')+'</ol><div class="actions"><button id="stats" aria-expanded="false">查看统计</button><button id="draw">随机看一位同学的选择</button></div><div id="statistics" hidden></div><div id="sample"></div><p class="pen-transition">刚才我们看的是一笔怎么写。现在把目光放回整个字：这些笔画是怎么安排在一起的？</p>');
-   $('#draw').onclick=draw;$('#stats').onclick=showStats;
+   panel(gallery(false,false,true)+'<ol class="pen-statements">'+statements.map(([word],i)=>`<li><strong>表述${i+1}：</strong>${word}</li>`).join('')+'</ol><p class="pen-transition">刚才我们看的是一笔怎么写。现在把目光放回整个字：这些笔画是怎么安排在一起的？</p>');
+
   }
   return;
  }

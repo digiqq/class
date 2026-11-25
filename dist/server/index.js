@@ -34,8 +34,8 @@ async function api(req,env,url){
   }
   return json({error:'开课繁忙，请重试。'},503);
  }
- const m=url.pathname.match(/^\/api\/room\/(\d{6})(?:\/(expression|draw|first-impression|draw-first|review-impression|draw-review|compare-review|practice|practice-list|practice-show|course-step|structure|structure-stats|lanting-stage|lanting-expression|lanting-mine|lanting-draw|lanting-compare|previous-page|activity-gate|lanting-return|pen-observation|pen-draw|pen-match(?:-answer|-advance|-count|-stats|-draw)?|structure-draw|intro-stage|script-gate|script-submit|script-stats))?$/);if(!m)return json({error:'未找到此功能。'},404);
- const room=await env.DB.prepare('SELECT phase,teacher_key,created_at,course_step,lanting_round,nav_revision,pen_stage,intro_stage,script_open,activity_open FROM zhangfa_rooms WHERE code=?').bind(m[1]).first();
+ const m=url.pathname.match(/^\/api\/room\/(\d{6})(?:\/(expression|draw|my-callout|shared-observation|first-impression|draw-first|review-impression|draw-review|compare-review|practice|practice-list|practice-show|course-step|structure|structure-stats|lanting-stage|lanting-expression|lanting-mine|lanting-draw|lanting-compare|previous-page|activity-gate|lanting-return|pen-observation|pen-draw|pen-match(?:-answer|-advance|-count|-stats|-draw)?|structure-draw|intro-stage|script-gate|script-submit|script-stats))?$/);if(!m)return json({error:'未找到此功能。'},404);
+ const room=await env.DB.prepare('SELECT phase,teacher_key,created_at,course_step,lanting_round,nav_revision,pen_stage,intro_stage,script_open,activity_open,shared_observation,teacher_first_impression FROM zhangfa_rooms WHERE code=?').bind(m[1]).first();
  if(!room||Date.now()-room.created_at>=expiry)return json({error:'课堂码无效或已过期，请向老师确认。'},404);
  const action=m[2], teacherKey=req.headers.get('Authorization')?.match(/^Bearer ([\da-f-]{72})$/)?.[1];
  if(['activity-gate','lanting-return'].includes(action)&&req.method==='POST'){
@@ -45,6 +45,7 @@ async function api(req,env,url){
   const returning=action==='lanting-return';
   if(returning?room.course_step<2:((room.course_step!==3&&![2,4,6,7].includes(room.phase))||typeof body.open!=='boolean'))return json({error:'此环节不能执行这项操作。'},409);
   const step=returning?1:room.course_step,phase=returning?0:room.phase,round=returning?4:room.lanting_round,open=!returning&&body.open;
+  if(open&&phase===4&&!room.teacher_first_impression)return json({error:'请先提交教师的初感受总结。'},409);
   const saved=await env.DB.prepare('UPDATE zhangfa_rooms SET course_step=?,phase=?,lanting_round=?,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND nav_revision=?').bind(step,phase,round,Number(open),m[1],room.nav_revision).run();
   return saved.meta.changes?json({...state(phase,step,round,room.nav_revision+1),introStage:room.intro_stage,activityOpen:open}):json({error:'课堂已切换，请重试。'},409);
  }
@@ -60,10 +61,12 @@ async function api(req,env,url){
   else if(step===2){step=1;round=4}
   else if(step===3)step=2;
   else if(step===4&&phase===1){step=3;phase=0}
+  else if(phase===7)phase=6;
+  else if(phase===4)phase=3;
   else if(phase>0)phase--;
   else return json({error:'已经在第一页。'},409);
-  const result=await env.DB.prepare('UPDATE zhangfa_rooms SET phase=?,course_step=?,lanting_round=?,intro_stage=?,script_open=0,activity_open=0,nav_revision=nav_revision+1 WHERE code=? AND nav_revision=?')
-   .bind(phase,step,round,intro,m[1],room.nav_revision).run();
+  const result=await env.DB.prepare('UPDATE zhangfa_rooms SET phase=?,course_step=?,lanting_round=?,intro_stage=?,script_open=0,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND nav_revision=?')
+   .bind(phase,step,round,intro,0,m[1],room.nav_revision).run();
   return result.meta.changes?json({...state(phase,step,round,room.nav_revision+1),introStage:intro,scriptOpen:false,activityOpen:false}):json({error:'课堂环节已变更，请稍后重试。'},409);
  }
  if(['intro-stage','script-gate','script-submit','script-stats'].includes(action)&&req.method==='POST'){
@@ -266,11 +269,17 @@ async function api(req,env,url){
      !validList(observation,allowedObservations)||!observation.length||!validList(feelings,allowedFeelings)||
      typeof ownFeeling!=='string'||ownFeeling.length>500||(!feelings.length&&!ownFeeling.trim())||
      typeof expression!=='string'||!expression.trim()||expression.length>1000)return json({error:'请检查观察和感受，自填感受最多 500 字。'},400);
+  const studentKey=await hash(student);
   const saved=await env.DB.prepare(`INSERT INTO zhangfa_expressions(room_code,student_key,work,observation,feelings,own_feeling,expression)
    SELECT code,?,?,?,?,?,? FROM zhangfa_rooms WHERE code=? AND phase=2 AND activity_open=1
    ON CONFLICT(room_code,student_key,work) DO UPDATE SET observation=excluded.observation,feelings=excluded.feelings,own_feeling=excluded.own_feeling,expression=excluded.expression`)
-   .bind(await hash(student),work,JSON.stringify(observation),JSON.stringify(feelings),ownFeeling,expression,m[1]).run();
-  return saved.meta.changes?json({ok:true}):json({error:'老师已切换环节，本次表达没有提交到课堂。'},409);
+   .bind(studentKey,work,JSON.stringify(observation),JSON.stringify(feelings),ownFeeling,expression,m[1]).run();
+  if(!saved.meta.changes)return json({error:'老师已切换环节，本次表达没有提交到课堂。'},409);
+  const row=await env.DB.prepare(`WITH roster AS (
+    SELECT student_key, ROW_NUMBER() OVER (ORDER BY MIN(rowid)) AS student_no
+    FROM zhangfa_expressions WHERE room_code=? GROUP BY student_key
+   ) SELECT student_no FROM roster WHERE student_key=?`).bind(m[1],studentKey).first();
+  return json({ok:true,studentNumber:row.student_no});
  }
  if(action==='practice'&&req.method==='POST'){
   if(room.phase!==7||room.activity_open!==1)return json({error:'请等待老师开启艺术实践。'},409);
@@ -312,31 +321,41 @@ async function api(req,env,url){
    .bind(await hash(student),review,reason,m[1]).run();
   return saved.meta.changes?json({ok:true}):json({error:'老师已切换环节，感受没有提交到课堂。'},409);
  }
+ if(action==='shared-observation'&&req.method==='POST'){
+  if(!teacherKey||await hash(teacherKey)!==room.teacher_key)return json({error:'只有开课教师可以发布补充观察。'},403);
+  if(room.phase!==4)return json({error:'请在初感受环节发布。'},409);
+  let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
+  if(typeof body?.observation!=='string'||body.observation.length>500)return json({error:'补充观察最多 500 字。'},400);
+  if(body.first!==undefined&&(typeof body.first!=='string'||!body.first.trim()||body.first.length>1300))return json({error:'初感受记录格式不正确。'},400);
+  const observation=body.observation.trim();
+  const result=await env.DB.prepare('UPDATE zhangfa_rooms SET shared_observation=?,teacher_first_impression=COALESCE(?,teacher_first_impression) WHERE code=? AND phase=4').bind(observation,body.first?.trim()??null,m[1]).run();
+  return result.meta.changes?json({sharedObservation:observation}):json({error:'课堂环节已切换。'},409);
+ }
  if((action==='draw-review'||action==='compare-review')&&req.method==='POST'){
   if(!teacherKey||await hash(teacherKey)!==room.teacher_key)return json({error:'只有开课教师可以抽看课堂表达。'},403);
-  if(room.phase!==6)return json({error:'请在“再赏原作”环节操作。'},409);
+  if(room.phase!==6||room.activity_open)return json({error:'请先暂停学生作答，再抽学号。'},409);
   let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
-  const compare=action==='compare-review', candidate=body?.student;
-  const exact=typeof candidate==='string'&&/^[a-f0-9]{64}$/.test(candidate)?candidate:'';
-  const previous=typeof body?.previous==='string'?body.previous:'';
-  const row=await env.DB.prepare(`SELECT r.student_key,r.review,r.reason,f.impression AS first_impression
-   FROM zhangfa_review_impressions r LEFT JOIN zhangfa_first_impressions f
-    ON f.room_code=r.room_code AND f.student_key=r.student_key
-   WHERE r.room_code=? AND (?='' OR r.student_key=?) AND (?=0 OR ?<>'' OR f.impression IS NOT NULL)
-   ORDER BY r.student_key=? ASC,RANDOM() LIMIT 1`)
-   .bind(m[1],exact,exact,compare?1:0,exact,previous).first();
-  return json({sample:row?{student:row.student_key,review:row.review,...(compare?{first:row.first_impression,reason:row.reason}:{})}:null});
+  const previous=Number.isInteger(body?.previous)?body.previous:0;
+  const row=await env.DB.prepare(`WITH roster AS (
+     SELECT student_key, impression, ROW_NUMBER() OVER (ORDER BY rowid) AS student_no
+     FROM zhangfa_first_impressions WHERE room_code=?
+   )
+   SELECT f.student_no, f.impression AS first_impression, r.review
+   FROM roster f JOIN zhangfa_review_impressions r ON r.student_key=f.student_key
+   WHERE r.room_code=? AND f.student_no<>? ORDER BY RANDOM() LIMIT 1`)
+   .bind(m[1],m[1],previous).first();
+  return json({sample:row?{studentNumber:row.student_no,first:row.first_impression,sharedObservation:room.shared_observation,review:row.review}:null});
  }
  if(action==='first-impression'&&req.method==='POST'){
   if(room.phase!==4||room.activity_open!==1)return json({error:'当前环节未开放初印象提交。'},409);
   let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
   const {student,findings,feelings,ownFinding,ownFeeling,impression}=body||{};
-  const options=['修改较多','字有大有小','排列有变化','有的地方密，有的地方疏','笔迹有轻有重'];
+  const options=['修改较多','字有大有小','线条有粗有细','笔画有断有连','排列有变化','有的地方密，有的地方疏','笔迹有轻有重'];
   const moods=['平静','沉重','急切','激动','复杂','杂乱','悲痛','有力量'];
   if(typeof student!=='string'||!/^[-a-f0-9]{36}$/.test(student)||!validList(findings,options)||!validList(feelings,moods)||
      ![ownFinding,ownFeeling].every(v=>typeof v==='string'&&v.length<=500)||
-     (!findings.length&&!ownFinding.trim())||(!feelings.length&&!ownFeeling.trim())||
-     typeof impression!=='string'||!impression.trim()||impression.length>1300)return json({error:'请写下至少一个发现和一种感受，自填内容每栏最多 500 字。'},400);
+     (!feelings.length&&!ownFeeling.trim())||
+     typeof impression!=='string'||!impression.trim()||impression.length>1300)return json({error:'请写下至少一种感受，自填内容每栏最多 500 字。'},400);
   const saved=await env.DB.prepare(`INSERT INTO zhangfa_first_impressions(room_code,student_key,findings,feelings,own_finding,own_feeling,impression)
    SELECT code,?,?,?,?,?,? FROM zhangfa_rooms WHERE code=? AND phase=4 AND activity_open=1
    ON CONFLICT(room_code,student_key) DO UPDATE SET findings=excluded.findings,feelings=excluded.feelings,own_finding=excluded.own_finding,own_feeling=excluded.own_feeling,impression=excluded.impression`)
@@ -351,29 +370,47 @@ async function api(req,env,url){
    .bind(m[1],typeof previous==='string'?previous:'').first();
   return json({sample:row?{student:row.student_key,findings:JSON.parse(row.findings),feelings:JSON.parse(row.feelings),ownFinding:row.own_finding,ownFeeling:row.own_feeling,impression:row.impression}:null});
  }
+ if(action==='my-callout'&&req.method==='POST'){
+  if(room.phase!==2)return json({callout:null});
+  let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
+  if(typeof body?.student!=='string'||!/^[-a-f0-9]{36}$/.test(body.student))return json({error:'课堂身份无效。'},400);
+  const selected=await env.DB.prepare(`SELECT e.work,e.expression
+    FROM zhangfa_callouts c JOIN zhangfa_expressions e
+     ON e.room_code=c.room_code AND e.student_key=c.student_key AND e.work=c.work
+    WHERE c.room_code=? AND c.student_key=?`).bind(m[1],await hash(body.student)).first();
+  return json({callout:selected||null});
+ }
  if(action==='draw'&&req.method==='POST'){
   if(!teacherKey||await hash(teacherKey)!==room.teacher_key)return json({error:'只有开课教师可以抽看表达。'},403);
   if(room.phase!==2)return json({error:'请在“选一选 · 说感受”环节抽看。'},409);
   let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
+  if(body?.clear===true){
+   await env.DB.prepare('DELETE FROM zhangfa_callouts WHERE room_code=?').bind(m[1]).run();
+   return json({sample:null});
+  }
   const work=body?.work,previous=typeof body?.previous==='string'?body.previous:'';
   if(!Number.isInteger(work)||work<0||work>4)return json({error:'请先选择要展示的作品。'},400);
   const row=await env.DB.prepare(`WITH roster AS (
     SELECT student_key, ROW_NUMBER() OVER (ORDER BY MIN(rowid)) AS student_no
     FROM zhangfa_expressions WHERE room_code=? GROUP BY student_key
    )
-   SELECT e.student_key,work,observation,feelings,own_feeling,expression,student_no
+   SELECT e.student_key,student_no
     FROM zhangfa_expressions e JOIN roster r ON e.student_key=r.student_key WHERE e.room_code=? AND work=?
     ORDER BY e.student_key=? ASC,RANDOM() LIMIT 1`).bind(m[1],m[1],work,previous).first();
-  return json({sample:row?{student:row.student_key,studentNumber:row.student_no,work:row.work,observation:JSON.parse(row.observation),feelings:JSON.parse(row.feelings),ownFeeling:row.own_feeling,expression:row.expression}:null});
+  if(row)await env.DB.prepare(`INSERT INTO zhangfa_callouts(room_code,student_key,work)
+   SELECT code,?,? FROM zhangfa_rooms WHERE code=? AND phase=2
+   ON CONFLICT(room_code) DO UPDATE SET student_key=excluded.student_key,work=excluded.work`).bind(row.student_key,work,m[1]).run();
+  else await env.DB.prepare('DELETE FROM zhangfa_callouts WHERE room_code=?').bind(m[1]).run();
+  return json({sample:row?{student:row.student_key,studentNumber:row.student_no}:null});
  }
  if(action)return json({error:'请求方法不支持。'},405);
- if(req.method==='GET')return json({...state(room.phase,room.course_step,room.lanting_round,room.nav_revision),introStage:room.intro_stage,scriptOpen:room.script_open===1,activityOpen:room.activity_open===1});
+ if(req.method==='GET')return json({...state(room.phase,room.course_step,room.lanting_round,room.nav_revision),introStage:room.intro_stage,scriptOpen:room.script_open===1,activityOpen:room.activity_open===1,sharedObservation:room.shared_observation});
  if(req.method!=='POST')return json({error:'请求方法不支持。'},405);
  const key=req.headers.get('Authorization')?.match(/^Bearer ([\da-f-]{72})$/)?.[1];
  if(!key||await hash(key)!==room.teacher_key)return json({error:'只有开课教师可以切换环节。'},403);
  let phase;try{({phase}=await req.json())}catch{return json({error:'请求格式错误。'},400)}
  if((room.course_step>0&&room.course_step<4)||!Number.isInteger(phase)||phase>7||phase!==room.phase+1)return json({error:'课堂环节已变更，请刷新后重试。'},409);
- const r=await env.DB.prepare('UPDATE zhangfa_rooms SET phase=?,activity_open=0,nav_revision=nav_revision+1 WHERE code=? AND phase=? AND nav_revision=?').bind(phase,m[1],room.phase,room.nav_revision).run();
+ const r=await env.DB.prepare('UPDATE zhangfa_rooms SET phase=?,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND phase=? AND nav_revision=?').bind(phase,0,m[1],room.phase,room.nav_revision).run();
  return r.meta.changes?json({...state(phase,room.course_step,room.lanting_round,room.nav_revision+1),activityOpen:false}):json({error:'课堂环节已变更，请刷新后重试。'},409);
 }
 export default {async fetch(req,env){

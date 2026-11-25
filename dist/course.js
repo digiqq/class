@@ -34,7 +34,7 @@ function renderCourseShell(){
   }
   if(identity!==shownCourse){
    shownCourse=identity;
-   module.innerHTML=`<iframe class="course-frame" title="${courseLabels[0]}" src="/course/lanting/index.html?v=classroom-polish-20261125&amp;role=${room?.role||'preview'}&amp;round=${round}"></iframe>`;
+   module.innerHTML=`<iframe class="course-frame" title="${courseLabels[0]}" src="/course/lanting/index.html?v=classroom-oral-20261125&amp;role=${room?.role||'preview'}&amp;round=${round}"></iframe>`;
    bindCourseFrame(module,iframe=>iframe.contentWindow.setLantingStage?.(room?.lantingRound||1));
   }else if(room){
    module.querySelector('iframe')?.contentWindow?.setLantingStage?.(round);
@@ -48,7 +48,7 @@ function renderCourseShell(){
  if(shownCourse===identity){if(step===3)module.querySelector('iframe')?.contentWindow?.setStructureOpen?.(room.activityOpen);return true}
  shownCourse=identity;
  const teacher=room.role==='teacher';
- const frame=`<iframe class="course-frame" title="${courseLabels[index]}" src="/course/${courseFiles[index]}/index.html?v=classroom-polish-20261125&amp;role=${room.role}&amp;class=${room.code}"></iframe>`;
+ const frame=`<iframe class="course-frame" title="${courseLabels[index]}" src="/course/${courseFiles[index]}/index.html?v=classroom-oral-20261125&amp;role=${room.role}&amp;class=${room.code}"></iframe>`;
  const advance=teacher&&step!==3?`<button type="button" id="advanceCourse" class="primary">进入${courseLabels[step]}</button>`:'';
  module.innerHTML=frame;
  if(teacher&&step!==3)module.insertAdjacentHTML('beforeend',`<div class="course-lead course-page-actions">${previousButton}${advance}</div>`);

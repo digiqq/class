@@ -72,5 +72,5 @@
 .oral-recap{margin-top:16px;text-align:center}.oral-recap summary{cursor:pointer}.oral-recap p{color:var(--red);font-size:clamp(1.4rem,4vw,2.4rem);font-weight:700}
 
 .lanting-oral #oralImages{grid-template-columns:repeat(3,minmax(0,1fr))}
-.lanting-oral #oralImages[data-view="whole"] img{display:block;height:clamp(85px,14vw,200px);max-height:none;cursor:zoom-in}
+.lanting-oral #oralImages[data-view="detail"] img{display:block;cursor:zoom-in;object-fit:contain}
 .lanting-oral #oralImages[data-view="ink"] img{background:white}
