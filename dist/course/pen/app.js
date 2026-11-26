@@ -111,7 +111,7 @@ function renderPractice(teacher){
  const bind=(kind,update)=>qa('[data-'+kind+']').forEach(button=>button.onclick=()=>{
   const n=Number(button.dataset[kind]);update(n);persist();render();$('[data-'+kind+'="'+n+'"]')?.focus({preventScroll:true});
  });
- const setGlyph=n=>{glyph=n;persist();render();$('[data-glyph="'+n+'"]')?.focus()};
+ const setGlyph=n=>{glyph=n;persist();render();const target=teacher?$('[data-glyph="'+n+'"]'):$('#glyph');target?.focus({preventScroll:true});target?.scrollIntoView({block:'start'})};
  bind('glyph',n=>{glyph=n});
  qa('[data-answer]').forEach(button=>button.onclick=()=>{
   draft[glyph]={...draft[glyph],answer:Number(button.dataset.answer)};syncPractice();

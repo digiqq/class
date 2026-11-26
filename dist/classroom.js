@@ -158,7 +158,7 @@ async function submitFirstImpression(button,message){
  if(!initialFeelings.length&&!ownFeeling){
   message.textContent='请先选择或写下一种感受。';return;
  }
- const data={student:current.student,findings:[...initialFindings],feelings:[...initialFeelings],ownFinding,ownFeeling,impression:[ownFinding&&'我还观察到：'+ownFinding,ownFeeling&&'我还感受到：'+ownFeeling].filter(Boolean).join('\n')||firstText()};
+ const data={student:current.student,findings:[...initialFindings],feelings:[...initialFeelings],ownFinding,ownFeeling,impression:[ownFinding&&'我还看到了'+ownFinding,ownFeeling&&'感受到了'+ownFeeling].filter(Boolean).join('，')||firstText()};
  button.disabled=true;message.textContent='正在提交初感受…';
  try{
   await roomRequest('/api/room/'+current.code+'/first-impression',data);
@@ -336,16 +336,16 @@ function reflectionWrite(key,value){
 }
 function teacherInitialState(){return reflectionRead('teacherWalk',{revealed:false})}
 const specialDetails=['字形有大有小','线条有粗有细','笔画有断有连'];
-const firstLine='初看《祭侄文稿》，我感觉这幅作品比较乱。';
-function commonInitial(d){return firstLine+(d.count?'\n因为我看到了：'+specialDetails.slice(0,d.count).join('、')+'。':'')}
+const firstLine='初看《祭侄文稿》，我感觉这幅作品比较乱，有多处涂改。';
+function recordedCount(d){return (d.count||0)-(d.pending?1:0)}
+function commonInitial(d){return firstLine+(d.count?'\n因为我看到了：'+(recordedCount(d)?specialDetails.slice(0,recordedCount(d)).join('、')+'。':''):'')}
 function completeInitial(d){return [commonInitial(d),d.other?.trim()&&'我还看到了：'+d.other.trim(),d.feel?.trim()&&'我感受到：'+d.feel.trim()].filter(Boolean).join('\n')}
 window.manuscriptTeacherCue=()=>room?.role==='teacher'&&room.phase===4?observationSequence[(teacherInitialState().count||0)-1]:null;
 function teacherInitialView(){
  const d=teacherInitialState();
  return `<article class="artcard teacher-initial-art">${d.revealed?'<strong class="manuscript-caption">初看《祭侄文稿》 · 颜真卿</strong>':''}${specialArt()}${zoomControls()}</article>
- ${d.revealed?`<div class="expression-actions"><button id="startFirst" ${d.started?'disabled':''}>初感受</button><button id="nextObservation" ${!d.started||d.count===3?'disabled':''}>细观察</button><button id="collectObservation" ${!d.count?'disabled':''}>记发现</button></div>`:''}
- ${d.count===3?`<section class="panel"><label for="teacherOther">我还看到了</label><textarea rows="2" maxlength="500" id="teacherOther">${esc(d.other||'')}</textarea><label for="teacherFeel">我感受到</label><textarea rows="2" maxlength="500" id="teacherFeel">${esc(d.feel||'')}</textarea><small>选填，可打字或用键盘听写。</small></section>`:''}
- ${d.started?`<section id="guidedCard" class="panel reflection-record"><h3>${d.saved?'我的初感受记录卡':'初感受记录卡'}</h3><p id="guidedText" class="preserve-lines">${esc(completeInitial(d))}</p>${d.count===3?'<button id="generateFirst" class="primary">提交初感受总结</button>':''}<span id="guidedStatus" role="status">${d.saved?' 已提交。':''}</span></section>`:''}
+ ${d.revealed?`<div class="expression-actions"><button id="startFirst" ${d.started?'disabled':''}>初感受</button><button id="nextObservation" ${!d.started||d.pending||recordedCount(d)===3?'disabled':''}>细观察</button><button id="collectObservation" ${!d.pending?'disabled':''}>细发现</button></div>`:''}
+ ${d.started?`<section id="guidedCard" class="panel reflection-record"><h3>${d.saved?'我的初感受记录卡':'初感受记录卡'}</h3><p id="guidedText" class="preserve-lines">${esc(completeInitial(d))}</p>${d.showFields?`<div class="first-inline"><label for="teacherOther">我还看到了</label><input maxlength="500" id="teacherOther" value="${esc(d.other||'')}"><span>，</span><label for="teacherFeel">感受到了</label><input maxlength="500" id="teacherFeel" value="${esc(d.feel||'')}"><button id="generateFirst" class="primary">提交初感受</button></div><small>可打字或用键盘听写。</small>`:''}<span id="guidedStatus" role="status">${d.saved?' 已提交。':''}</span></section>`:''}
  <div id="reflectionGate">${d.saved?'<button data-gate="open">开放学生端问答</button><button data-gate="pause">暂停学生端作答</button>':''}</div>${d.saved?phaseButton(5,'观看背景视频'):''}`;
 }
 function bindTeacherInitial(){
@@ -362,8 +362,9 @@ function bindTeacherInitial(){
   v.onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();change(d=>d.revealed=true)}};
  }
  if($('#startFirst'))$('#startFirst').onclick=()=>change(d=>{d.started=true;d.count=0});
- if($('#nextObservation'))$('#nextObservation').onclick=()=>change(d=>{d.count=Math.min(3,(d.count||0)+1);fitPending=true});
- if($('#collectObservation'))$('#collectObservation').onclick=()=>$('#guidedCard').scrollIntoView({block:'nearest'});
+ if($('#nextObservation'))$('#nextObservation').onclick=()=>change(d=>{d.count=Math.min(3,(d.count||0)+1);d.pending=true;fitPending=true});
+ if($('#collectObservation'))$('#collectObservation').onclick=e=>{e.stopPropagation();change(d=>{d.pending=false})};
+ lesson.onclick=e=>{const d=teacherInitialState();if(recordedCount(d)===3&&!d.showFields&&!e.target.closest('button,a,input,textarea,label,.teacher-initial-art'))change(x=>x.showFields=true)};
  for(const [id,key] of [['teacherOther','other'],['teacherFeel','feel']]){const f=$('#'+id);if(f)f.oninput=()=>{const d=teacherInitialState();d[key]=f.value;reflectionWrite('teacherWalk',d);$('#guidedText').textContent=completeInitial(d);$('#guidedStatus').textContent=' 尚未提交修改。'}}
  if($('#generateFirst'))$('#generateFirst').onclick=async()=>{
   if(busy)return;busy=true;const d=teacherInitialState(),current=room;const fields=['#generateFirst','#teacherOther','#teacherFeel'].map($);fields.forEach(f=>f.disabled=true);

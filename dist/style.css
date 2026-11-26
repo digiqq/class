@@ -263,3 +263,9 @@ body:has(#teacherOpen) #classroomBar,body:has(#teacherOpen) #courseRoute,#lesson
 
 .reflection-summary{text-align:center;margin-block:1rem;padding-block:clamp(1.25rem,4vw,3rem);color:#963e32;font-size:clamp(1.5rem,4vw,3rem);font-weight:700}
 .reflection-summary p{margin:.35em 0}
+
+.first-inline{display:flex;align-items:center;flex-wrap:wrap;gap:.45rem;margin-block:.75rem}
+.first-inline input{flex:1 1 10rem;min-width:0;padding:.45rem;font:inherit}
+.reflection-summary p{width:7em;margin:.35em auto;text-align:left}
+.reflection-summary p:nth-child(2){padding-inline-start:1em}
+.reflection-summary p:nth-child(3){padding-inline-start:2em}
