@@ -255,3 +255,11 @@ nav:has(button[hidden]){grid-template-columns:1fr;justify-items:start}
 #oralReview{display:block;width:100%;margin:.75rem 0;padding:.7rem;font:inherit}
 .reflection-record{overflow-wrap:anywhere}
 #teacherExtraObservation{display:block;width:100%;margin:.5rem 0;padding:.7rem;font:inherit}
+
+body:has(#teacherOpen) #classroomBar,body:has(#teacherOpen) #courseRoute,#lesson:has(#teacherOpen) header small{display:none}
+#lesson:has(#teacherOpen){min-height:95vh;cursor:pointer}
+#teacherOpen{min-height:65vh}
+.teacher-initial-art strong.manuscript-caption{display:block;color:#963e32;margin-bottom:.6rem}
+
+.reflection-summary{text-align:center;margin-block:1rem;padding-block:clamp(1.25rem,4vw,3rem);color:#963e32;font-size:clamp(1.5rem,4vw,3rem);font-weight:700}
+.reflection-summary p{margin:.35em 0}
