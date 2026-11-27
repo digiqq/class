@@ -275,3 +275,10 @@ body:has(#teacherOpen) #classroomBar,body:has(#teacherOpen) #courseRoute,#lesson
 .practice-work-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
 .practice-teacher-zoom{margin:1rem auto;text-align:center}
 .practice-teacher-zoom img{width:min(100%,950px);max-height:75vh;object-fit:contain}
+
+.reflection-pair.reflection-vs{border:0;padding:0;align-items:stretch}
+.reflection-vs .reflection-record{border:1px solid #b6a38b;border-radius:12px}
+.reflection-vs>strong{align-self:center}
+#practiceTeacherZoom{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#17130f}
+#practiceTeacherZoom button{width:100%;height:100%;padding:0;border:0;background:transparent}
+#practiceTeacherZoom img{width:100%;height:100%;object-fit:contain}

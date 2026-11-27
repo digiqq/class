@@ -108,33 +108,30 @@ function renderPracticeStudent(){
  };
 }
 function renderPracticeTeacher(){
- $('#stage').innerHTML=practiceHeader()+practiceCards(true)+`<div class="expression-actions spaced" id="practiceTeacherActions" hidden><button id="practiceDraw" class="primary">随机展示一份表达</button></div><p id="practiceTeacherStatus" role="status"></p><div id="practiceProjection"></div><div id="practiceTeacherZoom"></div><div class="expression-actions spaced"><button id="revisitOpening" aria-expanded="false" aria-controls="practiceClosing">回到开场</button></div><section id="practiceClosing" class="intro-panel spaced" hidden><figure><img class="intro-post" src="/course/intro/yatou.jpg" alt="《鸭头丸帖》局部"></figure><h2>现在再看这张千年前的留言条</h2><p>你能指着一个地方，说说它美在哪里吗？</p></section>`;
+ $('#stage').innerHTML=practiceHeader()+practiceCards(true)+`<div class="expression-actions spaced" id="reflectionGate"><button id="practiceGate" data-gate="${room.activityOpen?'pause':'open'}" class="primary">开放学生端作答</button><button id="practiceDraw" class="primary">随机展示赏评</button></div><p id="practiceTeacherStatus" role="status"></p><div id="practiceProjection"></div><dialog id="practiceTeacherZoom" aria-label="放大作品"><button type="button" aria-label="缩小作品"></button></dialog><div class="expression-actions spaced"><button id="revisitOpening" aria-expanded="false" aria-controls="practiceClosing">回到开场</button></div><section id="practiceClosing" class="intro-panel spaced" hidden><figure><img class="intro-post" src="/course/intro/yatou.jpg" alt="《鸭头丸帖》局部"></figure><h2>现在再看这张千年前的留言条</h2><p>你能指着一个地方，说说它美在哪里吗？</p></section>`;
  const current=room,message=$('#practiceTeacherStatus'),draw=$('#practiceDraw'),projection=$('#practiceProjection');
  const cards=[...$('#stage').querySelectorAll('[data-practice-work]')];
  const closing=$('#practiceClosing'),revisit=$('#revisitOpening');
  revisit.onclick=()=>{closing.hidden=!closing.hidden;revisit.setAttribute('aria-expanded',String(!closing.hidden));if(!closing.hidden)closing.scrollIntoView({block:'nearest'})};
- let work=-1,previous=0,selectionVersion=0;
+ let previous=0,opener=null;
+ const zoom=$('#practiceTeacherZoom'),zoomButton=zoom.querySelector('button');
  cards.forEach(card=>card.onclick=()=>{
-  const next=Number(card.dataset.practiceWork);if(next===work)return;
-  work=next;previous=0;selectionVersion++;
-  cards.forEach(c=>c.setAttribute('aria-pressed',String(c===card)));
-  $('#practiceTeacherZoom').innerHTML=`<figure class="practice-teacher-zoom"><img src="${practiceWorks[work].src}" alt="${practiceWorks[work].name}局部"></figure>`;
-  $('#practiceTeacherZoom').scrollIntoView({block:'nearest'});
-  projection.innerHTML='';message.textContent='';draw.textContent='随机展示一份表达';draw.disabled=false;
-  $('#practiceTeacherActions').hidden=false;
+  const w=practiceWorks[Number(card.dataset.practiceWork)];opener=card;
+  zoomButton.innerHTML=`<img src="${w.src}" alt="${w.name}局部">`;
+  zoom.showModal();
  });
+ zoomButton.onclick=()=>zoom.close();
+ zoom.onclose=()=>opener?.focus({preventScroll:true});
  draw.onclick=async()=>{
-  if(draw.disabled||work<0)return;
-  const pickedWork=work,version=selectionVersion,w=practiceWorks[pickedWork];
-  const isCurrent=()=>room===current&&current.phase===7&&version===selectionVersion&&draw.isConnected;
+  if(draw.disabled)return;
   draw.disabled=true;message.textContent='正在抽取…';
   try{
-   const {sample}=await roomRequest('/api/room/'+current.code+'/practice-show',{work:pickedWork,previous},current.key);
-   if(!isCurrent())return;
-   if(!sample){message.textContent=w.name+'还没有收到表达，请同学们完成后提交。';return}
-   previous=sample.id;message.textContent='正在展示'+w.name+'的一份匿名表达。';draw.textContent='再抽一位同学';
-   projection.innerHTML=`<article class="artcard projected-expression"><h2>${w.name} · 同学的欣赏评述</h2><dl><dt>我观察到</dt><dd>${esc(sample.observation)}</dd><dt>我感受到</dt><dd>${esc(sample.feeling)}</dd><dt>我的表达</dt><dd>${esc(sample.expression)}</dd></dl></article>`;
+   const {sample}=await roomRequest('/api/room/'+current.code+'/practice-show',{previous},current.key);
+   if(room!==current||current.phase!==7||!draw.isConnected)return;
+   if(!sample){message.textContent=previous?'暂无其他已提交的同学。':'还没有收到赏评，请同学们完成后提交。';return}
+   previous=sample.id;const w=practiceWorks[sample.work];message.textContent='';
+   projection.innerHTML=`<article class="artcard projected-expression"><h2>课堂学号：${Number(sample.studentNumber)} · ${w.name}</h2><figure class="practice-teacher-zoom"><img src="${w.src}" alt="${w.name}局部"></figure><p class="preserve-lines">${esc(sample.expression)}</p></article>`;
    projection.scrollIntoView({block:'nearest'});
-  }catch(e){if(isCurrent())message.textContent=e.message}finally{if(isCurrent())draw.disabled=false}
+  }catch(e){if(draw.isConnected)message.textContent=e.message}finally{draw.disabled=false}
  };
 }

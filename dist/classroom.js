@@ -78,9 +78,9 @@ function schedulePoll(){
   acceptNavigation(data,room);
   if(observationChanged&&room.role==='student'){const shared=$('#sharedFirstObservation');if(shared)shared.textContent=room.sharedObservation;restoreInitialCard()}
   const current=room;
-  if(current.role==='student'&&current.phase===2){
+  if(current.role==='student'&&[2,7].includes(current.phase)){
    const {callout}=await roomRequest('/api/room/'+code+'/my-callout',{student:current.student});
-   if(epoch!==requestEpoch||room!==current||room.phase!==2)return;
+   if(epoch!==requestEpoch||room!==current||![2,7].includes(room.phase))return;
    showStudentCallout(callout);
   }else showStudentCallout(null);
  }catch(e){if(epoch!==requestEpoch)return;status.textContent=e.message}
@@ -92,7 +92,7 @@ function showStudentCallout(callout){
  if(!callout){panel.hidden=true;panel.replaceChildren();delete panel.dataset.work;return}
  if(!panel.hidden&&panel.dataset.work===String(callout.work)&&panel.lastElementChild?.textContent===callout.expression)return;
  panel.dataset.work=String(callout.work);
- panel.innerHTML=`<h2>你被抽到了！</h2><p>请看大屏幕上的作品 ${Number(callout.work)+1}，结合你提交的回答，说说你的发现和感受。</p><blockquote>${esc(callout.expression)}</blockquote>`;
+ panel.innerHTML=`<h2>你被抽到了！</h2><p>请看大屏幕上的${callout.practice?esc(practiceWorks[callout.work].name):'作品 '+(Number(callout.work)+1)}，结合你提交的回答，说说你的发现和感受。</p><blockquote>${esc(callout.expression)}</blockquote>`;
  panel.hidden=false;
  panel.scrollIntoView({block:'nearest'});
 }
@@ -250,15 +250,17 @@ function bindActivityGate(){
  const current=room, button=document.createElement('button');
  button.type='button';button.className='primary';
  button.textContent=current.activityOpen?'暂停学生端作答':'开放学生端作答';
- const container=$('#compositionGate')||$('#reflectionGate'), controls=container?[...container.querySelectorAll('button')]:[button];
+ const container=$('#compositionGate')||$('#reflectionGate'), controls=container?[...container.querySelectorAll('[data-gate]')]:[button];
  if(!container)$('#stage').prepend(button);
  for(const button of controls){
+ if(button.id==='practiceGate')button.textContent=current.activityOpen?'暂停学生端作答':'开放学生端作答';
  const open=container?button.dataset.gate==='open':!current.activityOpen;
- if(container)button.disabled=open===current.activityOpen;
+ if(container)button.disabled=button.id!=='practiceGate'&&open===current.activityOpen;
  button.onclick=async()=>{if(busy)return;busy=true;button.disabled=true;try{
   const data=await roomRequest('/api/room/'+current.code+'/activity-gate',{open,revision:current.navRevision},current.key);
-  acceptNavigation(data,current);
- }catch(e){status.textContent=e.message}finally{busy=false;button.disabled=false}};
+  if(room===current&&data.phase===current.phase&&data.navRevision>=current.navRevision){Object.assign(current,data);storeRoom();if(button.id==='practiceGate')button.dataset.gate=current.activityOpen?'pause':'open';bindActivityGate()}
+  else acceptNavigation(data,current);
+ }catch(e){status.textContent=e.message}finally{busy=false;if(!container)button.disabled=false;else button.disabled=button.dataset.gate===(current.activityOpen?'open':'pause')&&button.id!=='practiceGate'}};
  }
 }
 function renderTeacher(){
@@ -404,7 +406,7 @@ function renderStudentReview(){
    await roomRequest('/api/room/'+current.code+'/review-impression',{student:current.student,review,reason:''});
    if(room!==current)return;
    reflectionWrite('reviewSaved',review);
-   if(message.isConnected){message.textContent='再感受已提交。';$('#savedOralReview').innerHTML=reflectionPair(reflectionRead('initial'),review,room.sharedObservation)}
+   if(message.isConnected){message.textContent='';$('#savedOralReview').innerHTML=reflectionPair(reflectionRead('initial'),review,room.sharedObservation)}
   }catch(e){if(message.isConnected)message.textContent=e.message}
   finally{send.disabled=false}
  };

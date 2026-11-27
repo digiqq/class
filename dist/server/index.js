@@ -302,10 +302,9 @@ async function api(req,env,url){
    return json({entries:result.results});
   }
   let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
-  const work=body?.work;if(work!==0&&work!==1)return json({error:'请先选择一幅作品。'},400);
   const prev=Number.isSafeInteger(body?.previous)?body.previous:0;
-  const row=await env.DB.prepare('SELECT id,work,lens,observation,feeling,expression FROM zhangfa_practice WHERE room_code=? AND work=? ORDER BY id=? ASC,RANDOM() LIMIT 1')
-   .bind(m[1],work,prev).first();
+  const row=await env.DB.prepare(`WITH roster AS (SELECT *, ROW_NUMBER() OVER (ORDER BY id) AS studentNumber FROM zhangfa_practice WHERE room_code=?) SELECT id,work,studentNumber,observation,feeling,expression FROM roster WHERE id<>? ORDER BY RANDOM() LIMIT 1`).bind(m[1],prev).first();
+  if(row)await env.DB.prepare('UPDATE zhangfa_rooms SET practice_callout_id=? WHERE code=? AND phase=7').bind(row.id,m[1]).run();
   return json({sample:row||null});
  }
  if(action==='review-impression'&&req.method==='POST'){
@@ -371,9 +370,13 @@ async function api(req,env,url){
   return json({sample:row?{student:row.student_key,studentNumber:row.student_no,findings:JSON.parse(row.findings),feelings:JSON.parse(row.feelings),ownFinding:row.own_finding,ownFeeling:row.own_feeling,impression:row.impression}:null});
  }
  if(action==='my-callout'&&req.method==='POST'){
-  if(room.phase!==2)return json({callout:null});
+  if(![2,7].includes(room.phase))return json({callout:null});
   let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
   if(typeof body?.student!=='string'||!/^[-a-f0-9]{36}$/.test(body.student))return json({error:'课堂身份无效。'},400);
+  if(room.phase===7){
+   const callout=await env.DB.prepare(`SELECT p.work,p.expression FROM zhangfa_rooms r JOIN zhangfa_practice p ON p.room_code=r.code AND p.id=r.practice_callout_id WHERE r.code=? AND r.phase=7 AND p.student_key=?`).bind(m[1],await hash(body.student)).first();
+   return json({callout:callout?{...callout,practice:true}:null});
+  }
   const selected=await env.DB.prepare(`SELECT e.work,e.expression
     FROM zhangfa_callouts c JOIN zhangfa_expressions e
      ON e.room_code=c.room_code AND e.student_key=c.student_key AND e.work=c.work
