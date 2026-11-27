@@ -71,9 +71,10 @@ function practiceAngles(d){
 }
 function renderPracticeStudent(){
  const s=practiceDraft(),w=practiceWorks[s.work],d=s.drafts[s.work];
- $('#stage').innerHTML=practiceHeader()+practiceCards(true,s.work,true)+(w?`<div id="practiceWorkspace" class="artcard spaced"><h2>${w.name} · 细看作品</h2><div id="practiceViewport" class="manuscript-viewport practice-viewport practice-selected-view" tabindex="0" aria-label="作品放大观察区"><img id="practiceImage" src="${w.src}" alt="${w.name}局部" draggable="false"></div><div class="image-zoom-controls"><button id="practiceOut" aria-label="缩小">−</button><span id="practiceScale">100%</span><button id="practiceIn" aria-label="放大">＋</button><button id="practiceFit">看全图</button><span class="minor">可双指缩放，放大后可拖动。</span></div></div><div class="panel spaced"><h3>我的观察与感受</h3><p>从用笔、结字、章法中选一个最有发现的角度。</p><div class="practice-notes">${practiceAngles(d)}</div><h3 class="spaced">我的表达</h3><p>把你的观察和感受说成一段话，你也可以自己写。</p><button id="practiceCompose">生成我的表达</button><label for="practiceExpression">我的评述</label><textarea id="practiceExpression" maxlength="3000" rows="6">${esc(d.expression||'')}</textarea><p class="muted">提交后，老师可以匿名投屏。请勿填写姓名或其他个人信息。</p><button id="practiceSubmit" class="primary">提交我的艺术实践</button><p id="practiceStatus" role="status"></p></div>`:'');
+ $('#stage').innerHTML=practiceHeader()+practiceCards(true,s.work,true)+(w?`<div id="practiceWorkspace" class="artcard spaced"><div class="practice-work-top"><h2>${w.name} · 细看作品</h2><button id="practiceBack">上一页</button></div><div id="practiceViewport" class="manuscript-viewport practice-viewport practice-selected-view" tabindex="0" aria-label="作品放大观察区"><img id="practiceImage" src="${w.src}" alt="${w.name}局部" draggable="false"></div><div class="image-zoom-controls"><button id="practiceOut" aria-label="缩小">−</button><span id="practiceScale">100%</span><button id="practiceIn" aria-label="放大">＋</button><button id="practiceFit">看全图</button><span class="minor">可双指缩放，放大后可拖动。</span></div></div><div class="panel spaced"><h3>我的观察与感受</h3><p>从用笔、结字、章法中选一个最有发现的角度。</p><div class="practice-notes">${practiceAngles(d)}</div><h3 class="spaced">我的表达</h3><p>把你的观察和感受说成一段话，你也可以自己写。</p><button id="practiceCompose">生成我的表达</button><label for="practiceExpression">我的评述</label><textarea id="practiceExpression" maxlength="3000" rows="6">${esc(d.expression||'')}</textarea><p class="muted">提交后，老师可以匿名投屏。请勿填写姓名或其他个人信息。</p><button id="practiceSubmit" class="primary">提交我的艺术实践</button><p id="practiceStatus" role="status"></p></div>`:'');
  document.querySelectorAll('[data-practice-work]').forEach(b=>b.onclick=()=>{s.work=Number(b.dataset.practiceWork);savePracticeDraft(s);renderPracticeStudent();$('#practiceWorkspace').scrollIntoView({block:'start'})});
  if(!w)return;
+ $('#practiceBack').onclick=()=>{s.work=-1;savePracticeDraft(s);renderPracticeStudent();$('#stage').scrollIntoView({block:'start'})};
  bindPracticeZoom(w);
  const message=$('#practiceStatus');
  document.querySelectorAll('[data-practice-angle]').forEach(button=>button.onclick=()=>{
@@ -107,7 +108,7 @@ function renderPracticeStudent(){
  };
 }
 function renderPracticeTeacher(){
- $('#stage').innerHTML=practiceHeader()+practiceCards(true)+`<div class="expression-actions spaced" id="practiceTeacherActions" hidden><button id="practiceDraw" class="primary">随机展示一份表达</button></div><p id="practiceTeacherStatus" role="status"></p><div id="practiceProjection"></div><div class="expression-actions spaced"><button id="revisitOpening" aria-expanded="false" aria-controls="practiceClosing">回到开场</button></div><section id="practiceClosing" class="intro-panel spaced" hidden><figure><img class="intro-post" src="/course/intro/yatou.jpg" alt="《鸭头丸帖》局部"></figure><h2>现在再看这张千年前的留言条</h2><p>你能指着一个地方，说说它美在哪里吗？</p></section>`;
+ $('#stage').innerHTML=practiceHeader()+practiceCards(true)+`<div class="expression-actions spaced" id="practiceTeacherActions" hidden><button id="practiceDraw" class="primary">随机展示一份表达</button></div><p id="practiceTeacherStatus" role="status"></p><div id="practiceProjection"></div><div id="practiceTeacherZoom"></div><div class="expression-actions spaced"><button id="revisitOpening" aria-expanded="false" aria-controls="practiceClosing">回到开场</button></div><section id="practiceClosing" class="intro-panel spaced" hidden><figure><img class="intro-post" src="/course/intro/yatou.jpg" alt="《鸭头丸帖》局部"></figure><h2>现在再看这张千年前的留言条</h2><p>你能指着一个地方，说说它美在哪里吗？</p></section>`;
  const current=room,message=$('#practiceTeacherStatus'),draw=$('#practiceDraw'),projection=$('#practiceProjection');
  const cards=[...$('#stage').querySelectorAll('[data-practice-work]')];
  const closing=$('#practiceClosing'),revisit=$('#revisitOpening');
@@ -117,6 +118,8 @@ function renderPracticeTeacher(){
   const next=Number(card.dataset.practiceWork);if(next===work)return;
   work=next;previous=0;selectionVersion++;
   cards.forEach(c=>c.setAttribute('aria-pressed',String(c===card)));
+  $('#practiceTeacherZoom').innerHTML=`<figure class="practice-teacher-zoom"><img src="${practiceWorks[work].src}" alt="${practiceWorks[work].name}局部"></figure>`;
+  $('#practiceTeacherZoom').scrollIntoView({block:'nearest'});
   projection.innerHTML='';message.textContent='';draw.textContent='随机展示一份表达';draw.disabled=false;
   $('#practiceTeacherActions').hidden=false;
  });

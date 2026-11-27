@@ -269,3 +269,9 @@ body:has(#teacherOpen) #classroomBar,body:has(#teacherOpen) #courseRoute,#lesson
 .reflection-summary p{width:7em;margin:.35em auto;text-align:left}
 .reflection-summary p:nth-child(2){padding-inline-start:1em}
 .reflection-summary p:nth-child(3){padding-inline-start:2em}
+
+.reflection-pair.reflection-vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;border:1px solid #b6a38b;border-radius:12px;padding:.65rem;gap:.45rem}
+.reflection-vs .reflection-record{min-width:0;overflow-wrap:anywhere}
+.practice-work-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.practice-teacher-zoom{margin:1rem auto;text-align:center}
+.practice-teacher-zoom img{width:min(100%,950px);max-height:75vh;object-fit:contain}

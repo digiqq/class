@@ -150,7 +150,7 @@ async function api(req,env,url){
   if(room.phase!==0||room.course_step<1||(room.course_step===1&&(room.lanting_round<4||room.intro_stage!==8))||step!==room.course_step+1||step>4)return json({error:'课堂环节已变更，请刷新后重试。'},409);
   const phase=step===4?1:0;
   const r=await env.DB.prepare('UPDATE zhangfa_rooms SET course_step=?,phase=?,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND course_step=? AND phase=0 AND nav_revision=?').bind(step,phase,0,m[1],room.course_step,room.nav_revision).run();
-  return r.meta.changes?json({...state(phase,step,room.lanting_round,room.nav_revision+1),activityOpen:false}):json({error:'课堂环节已变更，请刷新后重试。'},409);
+  return r.meta.changes?json({...state(phase,step,room.lanting_round,room.nav_revision+1),activityOpen:phase===6}):json({error:'课堂环节已变更，请刷新后重试。'},409);
  }
  if(action?.startsWith('pen-match')){
   if(room.course_step!==2)return json({error:'请先进入“用笔之美”。'},409);
@@ -366,9 +366,9 @@ async function api(req,env,url){
   if(!teacherKey||await hash(teacherKey)!==room.teacher_key)return json({error:'只有开课教师可以抽看初印象。'},403);
   if(room.phase!==4)return json({error:'请在“初发现 · 初感受”环节抽看。'},409);
   let previous;try{({previous}=await req.json())}catch{return json({error:'请求格式错误。'},400)}
-  const row=await env.DB.prepare('SELECT student_key,findings,feelings,own_finding,own_feeling,impression FROM zhangfa_first_impressions WHERE room_code=? ORDER BY student_key=? ASC, RANDOM() LIMIT 1')
+  const row=await env.DB.prepare('WITH roster AS (SELECT *, ROW_NUMBER() OVER (ORDER BY rowid) AS student_no FROM zhangfa_first_impressions WHERE room_code=?) SELECT * FROM roster WHERE student_key<>? ORDER BY RANDOM() LIMIT 1')
    .bind(m[1],typeof previous==='string'?previous:'').first();
-  return json({sample:row?{student:row.student_key,findings:JSON.parse(row.findings),feelings:JSON.parse(row.feelings),ownFinding:row.own_finding,ownFeeling:row.own_feeling,impression:row.impression}:null});
+  return json({sample:row?{student:row.student_key,studentNumber:row.student_no,findings:JSON.parse(row.findings),feelings:JSON.parse(row.feelings),ownFinding:row.own_finding,ownFeeling:row.own_feeling,impression:row.impression}:null});
  }
  if(action==='my-callout'&&req.method==='POST'){
   if(room.phase!==2)return json({callout:null});
@@ -410,8 +410,8 @@ async function api(req,env,url){
  if(!key||await hash(key)!==room.teacher_key)return json({error:'只有开课教师可以切换环节。'},403);
  let phase;try{({phase}=await req.json())}catch{return json({error:'请求格式错误。'},400)}
  if((room.course_step>0&&room.course_step<4)||!Number.isInteger(phase)||phase>7||phase!==room.phase+1)return json({error:'课堂环节已变更，请刷新后重试。'},409);
- const r=await env.DB.prepare('UPDATE zhangfa_rooms SET phase=?,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND phase=? AND nav_revision=?').bind(phase,0,m[1],room.phase,room.nav_revision).run();
- return r.meta.changes?json({...state(phase,room.course_step,room.lanting_round,room.nav_revision+1),activityOpen:false}):json({error:'课堂环节已变更，请刷新后重试。'},409);
+ const r=await env.DB.prepare('UPDATE zhangfa_rooms SET phase=?,activity_open=?,nav_revision=nav_revision+1 WHERE code=? AND phase=? AND nav_revision=?').bind(phase,Number(phase===6),m[1],room.phase,room.nav_revision).run();
+ return r.meta.changes?json({...state(phase,room.course_step,room.lanting_round,room.nav_revision+1),activityOpen:phase===6}):json({error:'课堂环节已变更，请刷新后重试。'},409);
 }
 export default {async fetch(req,env){
  const url=new URL(req.url);

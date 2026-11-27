@@ -3,9 +3,9 @@ const options={A:'横向取势，字形较扁',B:'结构严谨，形体方整',C
 function picture(d,frame=null){const files=['zhuan','li','kai','xing','cao'];return `<div class="picture ${d.shape} ${frame?'frame-'+frame:''}"><img src="assets/${files[data.indexOf(d)]}.jpg" alt="教材${d.name}例字"/>${frame?'<div class="trial-frame" aria-hidden="true"></div>':''}</div>`}
 const jieziKey='jiezi-draft:'+parent.classroom?.role+':'+parent.classroom?.code+':'+parent.classroom?.student;
  try{const d=JSON.parse(localStorage.getItem(jieziKey)||'null');if(d){({step,focus,guides,matched,answers,checked}=d)}}catch{}
- function render(){try{localStorage.setItem(jieziKey,JSON.stringify({step,focus,guides,matched,answers,checked}))}catch{}const following=!projection&&parent!==window;
- const waiting=following&&!structureOpen;
- const describing=following?structureOpen:step===1;
+ function render(){if(!projection&&parent!==window&&structureOpen)step=1;try{localStorage.setItem(jieziKey,JSON.stringify({step,focus,guides,matched,answers,checked}))}catch{}const following=!projection&&parent!==window;
+ const waiting=following&&!structureOpen&&step!==1;
+ const describing=step===1;
  $('header').hidden=waiting;
  $('nav').hidden=following;
  if(waiting){$('#shapeFooter').hidden=true;$('#stage').innerHTML='<p class="good">请看老师的大屏幕，等待开放作答。</p>';return}
@@ -37,10 +37,10 @@ if(describing){
    <p class="sub">从整个字形，到笔画与部件的安排：它们各有什么特点？选出合适的描述。</p>
    <div class="all-five" aria-label="例字">${data.map((d,i)=>`<button type="button" class="card description-glyph" data-glyph="${i}" aria-pressed="${activeGlyph===i}" ${locked?'disabled':''}><strong>${d.name}</strong>${picture(d)}<span class="chosen-code">${projection&&revealed?'答案':'已选'} <b>${projection&&revealed?d.answer:answers[i]||''}</b></span></button>`).join('')}</div>
    <div class="bank description-bank" aria-label="五个描述">${Object.entries(options).map(([k,v])=>`<button type="button" data-answer="${k}" aria-pressed="${activeGlyph!==null&&answers[activeGlyph]===k}" ${locked||activeGlyph===null?'disabled':''}><b>${k}</b>　${v}</button>`).join('')}</div>
-   <div class="submit-row">${projection?`<button type="button" id="structureGate">${structureOpen?'暂停学生答题':'继续学生答题'}</button><button type="button" id="structureReveal">公布正确答案</button><button type="button" id="structureStats">查看正确率</button>`:`<button type="button" id="submitClass" ${locked||!data.every((_,i)=>answers[i])?'disabled':''}>提交到课堂</button>`}</div>
+   <div class="submit-row">${projection?`<button type="button" id="structureGate">${structureOpen?'暂停学生答题':'继续学生答题'}</button><button type="button" id="structureReveal">公布正确答案</button><button type="button" id="structureStats">查看正确率</button><button type="button" id="structureSummary">小结</button>`:`<button type="button" id="submitClass" ${locked||!data.every((_,i)=>answers[i])?'disabled':''}>提交到课堂</button>`}</div>
    <p id="submitStatus" role="status">${locked?'老师已暂停答题，之前的选择会保留。':''}</p>
    ${projection?statsHtml:''}
-   <div class="summary lesson-end" ${projection&&discovery===0?'hidden':''}><small>我们的发现</small><p ${projection&&discovery<2?'hidden':''}>从一笔一画看到一个完整的字，笔画怎么安排，彼此怎么呼应，会让整个字呈现出不同的美，这就是<strong>结字之美</strong>。</p></div>
+   ${projection&&discovery?`<div class="summary lesson-end"><small>我们的发现</small><p>从一笔一画看到一个完整的字，笔画怎么安排，彼此怎么呼应，会让整个字呈现出不同的美，这就是<strong>结字之美</strong>。</p></div>`:''}
    ${projection&&parent!==window?`<div class="composition-next"><button type="button" id="backToShapes">← 上一页</button><p id="compositionStatus" role="status"></p><button type="button" id="toComposition">下一步：章法之美 →</button></div>`:parent===window?'<div class="composition-next"><a href="/zhangfa">下一步：章法之美 →</a></div>':''}`;
  }
  $('#stage').innerHTML=s;
@@ -57,6 +57,7 @@ function bind(){
  if($('#submitClass'))$('#submitClass').onclick=submitClass;
  if($('#structureGate'))$('#structureGate').onclick=()=>structureAction('toggle');
  if($('#structureReveal'))$('#structureReveal').onclick=()=>{revealed=true;render()};
+ if($('#structureSummary'))$('#structureSummary').onclick=()=>{discovery=1;render()};
  if($('#structureStats'))$('#structureStats').onclick=()=>structureAction('stats');
  if($('#backToShapes'))$('#backToShapes').onclick=()=>showStep(0);
  if($('#toComposition'))$('#toComposition').onclick=async e=>{
@@ -75,10 +76,6 @@ async function showStep(next){
  }
  step=next;render();window.scrollTo(0,0);
 }
-document.addEventListener('click',e=>{
- if(!projection||step!==1||!revealed||discovery>=2||e.target.closest('button,a,input,summary,select,textarea'))return;
- discovery++;render();
-});
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showStep(+b.dataset.step));
 $('#next').onclick=()=>showStep(1);
 render();
