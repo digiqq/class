@@ -78,9 +78,9 @@ function schedulePoll(){
   acceptNavigation(data,room);
   if(observationChanged&&room.role==='student'){const shared=$('#sharedFirstObservation');if(shared)shared.textContent=room.sharedObservation;restoreInitialCard()}
   const current=room;
-  if(current.role==='student'&&[2,7].includes(current.phase)){
+  if(current.role==='student'&&[2,4,7].includes(current.phase)){
    const {callout}=await roomRequest('/api/room/'+code+'/my-callout',{student:current.student});
-   if(epoch!==requestEpoch||room!==current||![2,7].includes(room.phase))return;
+   if(epoch!==requestEpoch||room!==current||![2,4,7].includes(room.phase))return;
    showStudentCallout(callout);
   }else showStudentCallout(null);
  }catch(e){if(epoch!==requestEpoch)return;status.textContent=e.message}
@@ -92,7 +92,7 @@ function showStudentCallout(callout){
  if(!callout){panel.hidden=true;panel.replaceChildren();delete panel.dataset.work;return}
  if(!panel.hidden&&panel.dataset.work===String(callout.work)&&panel.lastElementChild?.textContent===callout.expression)return;
  panel.dataset.work=String(callout.work);
- panel.innerHTML=`<h2>你被抽到了！</h2><p>请看大屏幕上的${callout.practice?esc(practiceWorks[callout.work].name):'作品 '+(Number(callout.work)+1)}，结合你提交的回答，说说你的发现和感受。</p><blockquote>${esc(callout.expression)}</blockquote>`;
+ panel.innerHTML=callout.initial?`<h2>你被抽到了！</h2><p>请结合你的初感受分享。</p><blockquote>${esc(callout.expression)}</blockquote>`:`<h2>你被抽到了！</h2><p>请看大屏幕上的${callout.practice?esc(practiceWorks[callout.work].name):'作品 '+(Number(callout.work)+1)}，结合你提交的回答，说说你的发现和感受。</p><blockquote>${esc(callout.expression)}</blockquote>`;
  panel.hidden=false;
  panel.scrollIntoView({block:'nearest'});
 }
@@ -162,14 +162,9 @@ async function submitFirstImpression(button,message){
  button.disabled=true;message.textContent='正在提交初感受…';
  try{
   await roomRequest('/api/room/'+current.code+'/first-impression',data);
-  if(room===current){reflectionWrite('initial',data.impression);if(message.isConnected){message.textContent='初感受已提交。';restoreInitialCard()}}
+  if(room===current){reflectionWrite('initial',data.impression);if(message.isConnected){message.textContent='';restoreInitialCard()}}
  }catch(e){if(message.isConnected)message.textContent=e.message}
  finally{button.disabled=false}
-}
-function firstProjection(){
- if(!projectedFirst)return '';
- const s=projectedFirst;
- return `<article class="artcard projected-expression"><h2>课堂学号：${Number(s.studentNumber)}</h2>${reflectionCard('初感受记录卡',sharedInitialText(s.impression,room.sharedObservation))}</article>`;
 }
 async function drawFirstImpression(button){
  if(button.disabled)return;
@@ -179,11 +174,7 @@ async function drawFirstImpression(button){
   if(room!==current||current.phase!==4||!button.isConnected)return;
   if(!sample&&projectedFirst){$('#drawFirstStatus').textContent='暂无其他已提交的同学。';return}
   projectedFirst=sample;lastFirst=sample?.student||null;
-  $('#firstProjection').innerHTML=firstProjection();
-  $('#closeFirst').hidden=!sample;
-  if(sample)$('#firstProjection').focus();
-  $('#drawFirstStatus').textContent=sample?'已抽到一位同学的初印象。':'还没有收到初印象。请同学们点击“提交初感受”。';
-  button.textContent=sample?'再抽一位同学':'抽看初感受';
+  $('#drawFirstStatus').textContent=sample?'抽中学号：'+Number(sample.studentNumber):'还没有收到初感受。';
  }catch(e){if(button.isConnected)$('#drawFirstStatus').textContent=e.message}
  finally{button.disabled=false}
 }
@@ -293,7 +284,6 @@ function renderTeacher(){
  }
  if($('#compareReview'))$('#compareReview').onclick=()=>drawReviewImpression(true);
  if($('#drawFirst'))$('#drawFirst').onclick=e=>drawFirstImpression(e.currentTarget);
- if($('#closeFirst'))$('#closeFirst').onclick=()=>{projectedFirst=null;$('#firstProjection').innerHTML='';$('#closeFirst').hidden=true;$('#drawFirst').textContent='抽看初感受';$('#drawFirstStatus').textContent=''};
  if($('#drawExpression'))$('#drawExpression').onclick=e=>drawExpression(e.currentTarget);
  document.querySelectorAll('[data-advance]').forEach(b=>b.onclick=async()=>{if(busy)return;const current=room;busy=true;b.disabled=true;try{const data=await roomRequest('/api/room/'+current.code,{phase:Number(b.dataset.advance)},current.key);acceptNavigation(data,current)}catch(e){status.textContent=e.message;b.disabled=false}finally{busy=false}});
  document.querySelectorAll('[data-project]').forEach(b=>b.onclick=async()=>{
@@ -340,7 +330,7 @@ function reflectionWrite(key,value){
 }
 function teacherInitialState(){return reflectionRead('teacherWalk',{revealed:false})}
 const specialDetails=['字形有大有小','线条有粗有细','笔画有断有连'];
-const firstLine='初看《祭侄文稿》，我感觉这幅作品比较乱，有多处涂改。';
+const firstLine='初看《祭侄文稿》，我感觉这幅作品比较乱。';
 function recordedCount(d){return (d.count||0)-(d.pending?1:0)}
 function commonInitial(d){return firstLine+(d.count?'\n因为我看到了：'+(recordedCount(d)?specialDetails.slice(0,recordedCount(d)).join('、')+'。':''):'')}
 function completeInitial(d){return [commonInitial(d),d.other?.trim()&&'我还看到了：'+d.other.trim(),d.feel?.trim()&&'我感受到：'+d.feel.trim()].filter(Boolean).join('\n')}
@@ -349,8 +339,8 @@ function teacherInitialView(){
  const d=teacherInitialState();
  return `<article class="artcard teacher-initial-art">${d.revealed?'<strong class="manuscript-caption">初看《祭侄文稿》 · 颜真卿</strong>':''}${specialArt()}${zoomControls()}</article>
  ${d.revealed?`<div class="expression-actions"><button id="startFirst" ${d.started?'disabled':''}>初感受</button><button id="nextObservation" ${!d.started||d.pending||recordedCount(d)===3?'disabled':''}>细观察</button><button id="collectObservation" ${!d.pending?'disabled':''}>细发现</button></div>`:''}
- ${d.started?`<section id="guidedCard" class="panel reflection-record"><h3>${d.saved?'我的初感受记录卡':'初感受记录卡'}</h3><p id="guidedText" class="preserve-lines">${esc(completeInitial(d))}</p>${d.showFields?`<div class="first-inline"><label for="teacherOther">我还看到了</label><input maxlength="500" id="teacherOther" value="${esc(d.other||'')}"><span>，</span><label for="teacherFeel">感受到了</label><input maxlength="500" id="teacherFeel" value="${esc(d.feel||'')}"><button id="generateFirst" class="primary">提交初感受</button><button id="drawFirst">抽看初感受</button></div><small>可打字或用键盘听写。</small>`:''}<span id="guidedStatus" role="status">${d.saved?' 已提交。':''}</span></section>`:''}
- <p id="drawFirstStatus" role="status"></p><div id="firstProjection" tabindex="-1"></div><button id="closeFirst" hidden>关闭展示</button><div id="reflectionGate">${d.saved?'<button data-gate="open">开放学生端问答</button><button data-gate="pause">暂停学生端作答</button>':''}</div>${d.saved?phaseButton(5,'观看背景视频'):''}`;
+ ${d.started?`<section id="guidedCard" class="panel reflection-record"><h3>${'初感受'}</h3><p id="guidedText" class="preserve-lines">${esc(completeInitial(d))}</p>${d.showFields?`<div class="first-inline"><label for="teacherOther">我还看到了</label><input maxlength="500" id="teacherOther" value="${esc(d.other||'')}"><span>，</span><label for="teacherFeel">感受到了</label><input maxlength="500" id="teacherFeel" value="${esc(d.feel||'')}"></div><div class="initial-actions"><button id="generateFirst" class="primary">提交初感受</button><button id="drawFirst">抽看初感受</button><button data-advance="5" ${d.saved?'':'disabled'}>再感受</button></div><small>可打字或用键盘听写。</small>`:''}<span id="guidedStatus" role="status">${d.saved?' 已提交。':''}</span></section>`:''}
+ <p id="drawFirstStatus" role="status"></p><div id="reflectionGate">${d.saved?'<button data-gate="open">开放学生端问答</button><button data-gate="pause">暂停学生端作答</button>':''}</div>`;
 }
 function bindTeacherInitial(){
  bindImage(renderTeacher);
@@ -383,7 +373,7 @@ function sharedInitialText(saved,extra){
 function restoreInitialCard(){
  const saved=reflectionRead('initial'),hook=$('#firstSubmitStatus')||$('#reviewInitialCard');
  if(!saved||!hook)return;
- const content=reflectionCard('初感受记录卡',sharedInitialText(saved,room.sharedObservation));
+ const content=reflectionCard('初感受',sharedInitialText(saved,room.sharedObservation));
  const card=$('#studentInitialCard');if(card){card.innerHTML=content;return}
  hook.insertAdjacentHTML('afterend',`<div id="studentInitialCard">${content}</div>`);
 }

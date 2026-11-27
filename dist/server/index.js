@@ -367,12 +367,17 @@ async function api(req,env,url){
   let previous;try{({previous}=await req.json())}catch{return json({error:'请求格式错误。'},400)}
   const row=await env.DB.prepare('WITH roster AS (SELECT *, ROW_NUMBER() OVER (ORDER BY rowid) AS student_no FROM zhangfa_first_impressions WHERE room_code=?) SELECT * FROM roster WHERE student_key<>? ORDER BY RANDOM() LIMIT 1')
    .bind(m[1],typeof previous==='string'?previous:'').first();
-  return json({sample:row?{student:row.student_key,studentNumber:row.student_no,findings:JSON.parse(row.findings),feelings:JSON.parse(row.feelings),ownFinding:row.own_finding,ownFeeling:row.own_feeling,impression:row.impression}:null});
+  if(row)await env.DB.prepare('UPDATE zhangfa_rooms SET initial_callout_key=? WHERE code=? AND phase=4').bind(row.student_key,m[1]).run();
+  return json({sample:row?{student:row.student_key,studentNumber:row.student_no}:null});
  }
  if(action==='my-callout'&&req.method==='POST'){
-  if(![2,7].includes(room.phase))return json({callout:null});
+  if(![2,4,7].includes(room.phase))return json({callout:null});
   let body;try{body=await req.json()}catch{return json({error:'请求格式错误。'},400)}
   if(typeof body?.student!=='string'||!/^[-a-f0-9]{36}$/.test(body.student))return json({error:'课堂身份无效。'},400);
+  if(room.phase===4){
+   const callout=await env.DB.prepare('SELECT f.impression AS expression FROM zhangfa_rooms r JOIN zhangfa_first_impressions f ON f.room_code=r.code AND f.student_key=r.initial_callout_key WHERE r.code=? AND r.phase=4 AND f.student_key=?').bind(m[1],await hash(body.student)).first();
+   return json({callout:callout?{...callout,initial:true}:null});
+  }
   if(room.phase===7){
    const callout=await env.DB.prepare(`SELECT p.work,p.expression FROM zhangfa_rooms r JOIN zhangfa_practice p ON p.room_code=r.code AND p.id=r.practice_callout_id WHERE r.code=? AND r.phase=7 AND p.student_key=?`).bind(m[1],await hash(body.student)).first();
    return json({callout:callout?{...callout,practice:true}:null});
